@@ -1,0 +1,8 @@
+<header class="site-header"><div class="container header-inner">
+  <a class="brand" href="#top" aria-label="Эльвира — на главную"><span class="brand-mark" aria-hidden="true">☾</span><span><strong>Эльвира</strong><small>Таро · Матрицы · Астро-фон</small></span></a>
+  <button class="menu-toggle" aria-expanded="false" aria-controls="main-nav"><span></span><span></span><span></span><span class="sr-only">Открыть меню</span></button>
+  <nav id="main-nav" class="main-nav" aria-label="Основная навигация"><a href="#services">Услуги</a><a href="#about">Обо мне</a><a href="#reviews">Отзывы</a><a href="#faq">FAQ</a><a href="#contact">Контакты</a><a class="btn btn-small" href="#booking">Записаться</a></nav>
+</div></header>
+<script>
+const button=document.querySelector('.menu-toggle');const nav=document.querySelector('.main-nav');button?.addEventListener('click',()=>{const open=button.getAttribute('aria-expanded')==='true';button.setAttribute('aria-expanded',String(!open));nav?.classList.toggle('open')});nav?.querySelectorAll('a').forEach((link)=>link.addEventListener('click',()=>{nav.classList.remove('open');button?.setAttribute('aria-expanded','false')}));
+</script>
