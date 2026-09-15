@@ -1,0 +1,4 @@
+---
+const { eyebrow, title, accent, description, crumb } = Astro.props;
+---
+<section class="page-head wrap"><div class="breadcrumb"><a href="/">Главная</a><span>/</span><span>{crumb}</span></div><p class="eyebrow">{eyebrow}</p><h1>{title} {accent && <em>{accent}</em>}</h1>{description && <p class="lead">{description}</p>}</section>

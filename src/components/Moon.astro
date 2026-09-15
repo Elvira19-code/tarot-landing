@@ -1,0 +1,44 @@
+<div class="moon-layer" aria-hidden="true">
+  <div class="moon-scene">
+    <img class="orbit-light" src="/images/celestial.png" alt="" width="1536" height="1024"/>
+    <div class="moon-body"><div class="moon-disc"><img src="/images/celestial.png" alt="" width="1536" height="1024"/></div></div>
+  </div>
+</div>
+<script>
+const source=document.querySelector<HTMLImageElement>('.hero-art')!;
+const layer=document.querySelector<HTMLElement>('.moon-layer')!;
+const scene=layer.querySelector<HTMLElement>('.moon-scene')!;
+function alignMoon(){
+ const width=source.clientWidth,height=source.clientHeight;
+ if(!width||!height)return;
+ const scale=Math.max(width/1536,height/1024);
+ const position=getComputedStyle(source).objectPosition.split(' ');
+ const fraction=(value:string)=>value==='center'?.5:value==='top'||value==='left'?0:value==='bottom'||value==='right'?1:parseFloat(value)/100;
+ const x=(width-1536*scale)*fraction(position[0]);
+ const y=(height-1024*scale)*fraction(position[1]||'50%');
+ layer.style.height=height+'px';
+ scene.style.transform=`translate(${x}px,${y}px) scale(${scale})`;
+ layer.classList.add('is-ready');
+}
+const observer=new ResizeObserver(alignMoon);observer.observe(source);
+window.addEventListener('resize',alignMoon);
+window.addEventListener('pagehide',()=>observer.disconnect(),{once:true});
+alignMoon();
+</script>
+<style>
+.moon-layer{position:absolute;top:0;left:0;width:100%;overflow:hidden;z-index:-3;pointer-events:none;visibility:hidden}
+.moon-layer.is-ready{visibility:visible}
+.moon-scene{position:absolute;width:1536px;height:1024px;transform-origin:0 0}
+.moon-body{position:absolute;left:895px;top:197px;width:520px;height:520px;transform-style:preserve-3d;transform:perspective(1600px) rotateX(calc(var(--space-y,0)*-3deg)) rotateY(calc(var(--space-x,0)*4deg));border-radius:50%;box-shadow:16px 12px 40px #05071480}
+.moon-body::after{content:'';position:absolute;inset:0;border-radius:50%;background:radial-gradient(circle at 29% 25%,#fff1c52b 0%,transparent 45%,#0a07132b 68%,#050614b8 99%);box-shadow:inset -22px -13px 40px #08071777,inset 5px 4px 15px #ffe2a32e;pointer-events:none}
+.moon-disc{position:absolute;inset:0;width:520px;height:520px;border-radius:50%;overflow:hidden;animation:moon-spin 80s linear infinite,moon-radiance 6s ease-in-out infinite alternate;will-change:transform;mask-image:radial-gradient(circle,#000 69.8%,transparent 70.7%)}
+.moon-scene::after{content:'';position:absolute;left:895px;top:197px;width:520px;height:520px;border-radius:50%;box-shadow:0 0 22px 4px #c9aa7070,0 0 54px 10px #c9aa7030,inset 0 0 18px #f3dca950;pointer-events:none;animation:moon-halo 6s ease-in-out infinite alternate}
+.moon-disc img{position:absolute;left:-895px;top:-197px;width:1536px;height:1024px;max-width:none}
+.orbit-light{position:absolute;inset:0;width:1536px;height:1024px;max-width:none;mask-image:radial-gradient(circle at 1155px 457px,transparent 265px,#000 282px,#000 435px,transparent 510px);mix-blend-mode:screen;filter:brightness(1.9) saturate(1.25) drop-shadow(0 0 4px #c9aa70);transform:translate3d(calc(var(--space-x,0)*6px),calc(var(--space-y,0)*4px),0);animation:orbit-shine 7s ease-in-out infinite alternate;opacity:.65}
+@keyframes moon-spin{to{transform:rotate(360deg)}}
+@keyframes moon-radiance{from{filter:brightness(1.02) saturate(1.02)}to{filter:brightness(1.24) saturate(1.12)}}
+@keyframes moon-halo{from{opacity:.35}to{opacity:.85}}
+@keyframes orbit-shine{from{opacity:.45}to{opacity:.85}}
+:global(.hero.sky-paused) .moon-disc,:global(.hero.sky-paused) .orbit-light,:global(.hero.sky-paused) .moon-scene::after{animation-play-state:paused}
+@media(prefers-reduced-motion:reduce){.moon-disc,.orbit-light,.moon-scene::after{animation:none}.orbit-light{opacity:.6}.moon-scene::after{opacity:.45}}
+</style>

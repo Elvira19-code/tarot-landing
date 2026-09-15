@@ -1,0 +1,69 @@
+<div class="sky-three" aria-hidden="true"><canvas class="sky-canvas"></canvas></div>
+<script>
+import * as THREE from 'three';
+const hero=document.querySelector<HTMLElement>('.hero')!;
+const canvas=document.querySelector<HTMLCanvasElement>('.sky-canvas')!;
+const reduced=matchMedia('(prefers-reduced-motion: reduce)');
+async function startSky(){
+ const renderer=new THREE.WebGLRenderer({canvas,alpha:true,antialias:true,powerPreference:'low-power'});
+ renderer.setPixelRatio(Math.min(devicePixelRatio,1.5));
+ renderer.setClearColor(0x0b1026,0);renderer.outputColorSpace=THREE.SRGBColorSpace;
+ renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.22;
+ const scene=new THREE.Scene();
+ const camera=new THREE.PerspectiveCamera(40,1,.1,100);camera.position.z=10;
+ const system=new THREE.Group();scene.add(system);
+ const loader=new THREE.TextureLoader();
+ const [color,height]=await Promise.all([loader.loadAsync('/images/moon-color.jpg'),loader.loadAsync('/images/moon-height.jpg')]);
+ color.colorSpace=THREE.SRGBColorSpace;color.anisotropy=Math.min(4,renderer.capabilities.getMaxAnisotropy());
+ const moonMaterial=new THREE.MeshStandardMaterial({map:color,bumpMap:height,bumpScale:.055,roughness:.98,metalness:0,color:0xffefda});
+ const moon=new THREE.Mesh(new THREE.SphereGeometry(1.65,96,64),moonMaterial);
+ moon.rotation.set(.08,Math.PI*.55,-.15);system.add(moon);
+ const ambient=new THREE.AmbientLight(0xc9c6e9,.34);scene.add(ambient);
+ const sun=new THREE.DirectionalLight(0xffeed5,3.5);sun.position.set(-3,4,6);scene.add(sun);
+ const violet=new THREE.DirectionalLight(0x8b64c4,1.15);violet.position.set(4,-1,-3);scene.add(violet);
+ const fill=new THREE.DirectionalLight(0xdacbaa,.45);fill.position.set(3,-2,4);scene.add(fill);
+ const haloMaterial=new THREE.ShaderMaterial({transparent:true,depthWrite:false,side:THREE.BackSide,blending:THREE.AdditiveBlending,uniforms:{strength:{value:.28}},vertexShader:`varying vec3 normalView;varying vec3 viewDir;void main(){vec4 p=modelViewMatrix*vec4(position,1.0);normalView=normalize(normalMatrix*normal);viewDir=normalize(-p.xyz);gl_Position=projectionMatrix*p;}`,fragmentShader:`varying vec3 normalView;varying vec3 viewDir;uniform float strength;void main(){float rim=pow(1.0-abs(dot(normalize(normalView),normalize(viewDir))),3.5);gl_FragColor=vec4(vec3(.9,.62,.27),rim*strength);}`});
+ const halo=new THREE.Mesh(new THREE.SphereGeometry(1.7,64,48),haloMaterial);system.add(halo);
+ const rings=new THREE.Group();system.add(rings);
+ const ringMaterials:THREE.MeshStandardMaterial[]=[];
+ for(let i=0;i<4;i++){
+  const radius=2.12+i*.23;
+  const mat=new THREE.MeshStandardMaterial({color:0xd7b675,metalness:.65,roughness:.32,emissive:0xc29a48,emissiveIntensity:.55,transparent:true,opacity:i===3?.55:.9});ringMaterials.push(mat);
+  const ring=new THREE.Mesh(new THREE.TorusGeometry(radius,i===0?.012:.006,6,160),mat);
+  ring.rotation.set(.35+i*.32,.23+i*.34,.28-i*.17);rings.add(ring);
+ }
+ const beads:THREE.Mesh[]=[];
+ for(let i=0;i<3;i++){
+  const bead=new THREE.Mesh(new THREE.SphereGeometry(.055+i*.012,16,12),new THREE.MeshStandardMaterial({color:0xf0d49b,metalness:.65,roughness:.25,emissive:0xa67d31,emissiveIntensity:.6}));
+  rings.children[i].add(bead);beads.push(bead);
+ }
+ // Shared point geometry keeps the distant, independently twinkling stars inexpensive.
+ const positions:number[]=[],phases:number[]=[],sizes:number[]=[];
+ for(let i=0;i<300;i++){const random=(n:number)=>{const v=Math.sin(n*127.1+311.7)*43758.5453;return v-Math.floor(v);};positions.push((random(i*3)-.5)*24,(random(i*3+1)-.5)*15,-3-random(i*3+2)*9);phases.push(random(i+500)*6.28);sizes.push(i%11===0?4:1.4+random(i+700)*1.8);}
+ const starGeometry=new THREE.BufferGeometry();starGeometry.setAttribute('position',new THREE.Float32BufferAttribute(positions,3));starGeometry.setAttribute('phase',new THREE.Float32BufferAttribute(phases,1));starGeometry.setAttribute('size',new THREE.Float32BufferAttribute(sizes,1));
+ const starMaterial=new THREE.ShaderMaterial({transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,uniforms:{time:{value:0},pixelRatio:{value:Math.min(devicePixelRatio,1.5)}},vertexShader:`attribute float phase;attribute float size;varying float sparkle;uniform float time;uniform float pixelRatio;void main(){vec4 p=modelViewMatrix*vec4(position,1.0);sparkle=.3+.7*pow(.5+.5*sin(time*(.45+phase*.12)+phase),2.0);gl_PointSize=size*pixelRatio*16.0/-p.z;gl_Position=projectionMatrix*p;}`,fragmentShader:`varying float sparkle;void main(){float d=length(gl_PointCoord-.5);float glow=smoothstep(.5,.02,d);gl_FragColor=vec4(vec3(1.0,.84,.57),glow*sparkle);}`});
+ const stars=new THREE.Points(starGeometry,starMaterial);scene.add(stars);
+ let width=1,heightPx=1,visible=true,paused=hero.classList.contains('sky-paused'),raf=0,last=0,time=0;
+ const pointer=new THREE.Vector2();const tilt=new THREE.Vector2();
+ function resize(){width=hero.clientWidth;heightPx=hero.clientHeight;renderer.setSize(width,heightPx,false);camera.aspect=width/heightPx;camera.updateProjectionMatrix();const worldH=2*Math.tan(THREE.MathUtils.degToRad(20))*10;const mobile=width<=600;const radius=mobile?width*.35:Math.min(heightPx*.35,width*.205);system.scale.setScalar(radius/heightPx*worldH/1.65);const cx=width*(mobile?.68:.76),cy=mobile?Math.min(210,heightPx*.28):heightPx*.47;system.position.set((cx/width-.5)*worldH*camera.aspect,(.5-cy/heightPx)*worldH,0);render();}
+ function render(){renderer.render(scene,camera);}
+ function frame(now:number){raf=0;const delta=last?Math.min((now-last)/1000,.05):0;last=now;time+=delta;moon.rotation.y+=delta*.065;rings.rotation.z=Math.sin(time*.12)*.025;stars.rotation.y=Math.sin(time*.025)*.018;starMaterial.uniforms.time.value=time;haloMaterial.uniforms.strength.value=.24+.06*Math.sin(time*.7);ringMaterials.forEach((mat,i)=>mat.emissiveIntensity=.5+.16*Math.sin(time*.6+i));tilt.lerp(pointer,.035);system.rotation.x=tilt.y*.045;system.rotation.y=tilt.x*.065;beads.forEach((bead,i)=>{const angle=time*(.09+i*.025)+i*2;const radius=2.12+i*.23;bead.position.set(Math.cos(angle)*radius,Math.sin(angle)*radius,0);});render();if(!paused&&!reduced.matches&&visible&&!document.hidden)raf=requestAnimationFrame(frame);}
+ function sync(){if(raf)cancelAnimationFrame(raf);raf=0;last=0;if(!paused&&!reduced.matches&&visible&&!document.hidden)raf=requestAnimationFrame(frame);else render();}
+ const resizeObserver=new ResizeObserver(resize);resizeObserver.observe(hero);
+ const visibilityObserver=new IntersectionObserver(entries=>{visible=entries[0].isIntersecting;sync();});visibilityObserver.observe(hero);
+ hero.addEventListener('pointermove',e=>{if(e.pointerType==='mouse'){pointer.set((e.clientX/width-.5)*2,(e.clientY/heightPx-.5)*2);}});
+ hero.addEventListener('pointerleave',()=>pointer.set(0,0));
+ hero.addEventListener('sky-pause',(event:Event)=>{paused=(event as CustomEvent<boolean>).detail;sync();});
+ reduced.addEventListener('change',sync);document.addEventListener('visibilitychange',sync);
+ canvas.addEventListener('webglcontextlost',event=>{event.preventDefault();if(raf)cancelAnimationFrame(raf);hero.classList.remove('is-3d');});
+ window.addEventListener('pagehide',()=>{if(raf)cancelAnimationFrame(raf);resizeObserver.disconnect();visibilityObserver.disconnect();reduced.removeEventListener('change',sync);document.removeEventListener('visibilitychange',sync);scene.traverse(object=>{if(object instanceof THREE.Mesh||object instanceof THREE.Points){object.geometry.dispose();const materials=Array.isArray(object.material)?object.material:[object.material];materials.forEach(m=>m.dispose());}});color.dispose();height.dispose();renderer.dispose();},{once:true});
+ beads.forEach((bead,i)=>bead.position.set(Math.cos(i*2)*(2.12+i*.23),Math.sin(i*2)*(2.12+i*.23),0));
+ resize();hero.classList.add('is-3d');canvas.dataset.ready='true';sync();
+}
+startSky().catch(error=>{console.warn('3D sky unavailable; keeping illustrated background.',error);hero.classList.remove('is-3d');});
+</script>
+<style>
+.sky-three{position:absolute;inset:0;z-index:-3;pointer-events:none;opacity:0;transition:opacity .6s}
+.sky-canvas{display:block;width:100%;height:100%}
+:global(.hero.is-3d) .sky-three{opacity:1}
+</style>

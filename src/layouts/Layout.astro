@@ -1,12 +1,56 @@
 ---
+import '@fontsource/cormorant-garamond/400.css';
+import '@fontsource/cormorant-garamond/400-italic.css';
+import '@fontsource/cormorant-garamond/cyrillic-400.css';
+import '@fontsource/cormorant-garamond/cyrillic-400-italic.css';
+import '@fontsource/manrope/400.css';
+import '@fontsource/manrope/500.css';
+import '@fontsource/manrope/cyrillic-400.css';
 import '../styles/global.css';
-const { title, description } = Astro.props;
+import { brand } from '../data/site';
+const { title, description = 'Бережные консультации Таро, матрица и астрологические справки. Честный разговор, практические выводы и свобода выбора.' } = Astro.props;
+const links = [['/','Главная'],['/services/','Услуги'],['/about/','Обо мне'],['/process/','Как всё проходит'],['/reviews/','Отзывы']];
 ---
-<!doctype html><html lang="ru"><head>
-  <meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="description" content={description} /><meta name="theme-color" content="#0F172A" />
-  <meta property="og:title" content={title} /><meta property="og:description" content={description} /><meta property="og:type" content="website" />
-  <link rel="icon" type="image/svg+xml" href="/favicon.svg" /><link rel="preconnect" href="https://fonts.googleapis.com" /><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet" />
-  <title>{title}</title>
-</head><body><a class="skip-link" href="#content">Перейти к содержанию</a><slot /></body></html>
+<!doctype html>
+<html lang="ru"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><meta name="description" content={description}/><meta name="theme-color" content="#0b1026"/><title>{title} · {brand.name}</title><link rel="icon" href="/favicon.svg"/></head>
+<body>
+<a class="skip" href="#main">К содержанию</a>
+<header class="header wrap"><a class="brand" href="/" aria-label="Точка ясности — главная"><img src="/favicon.svg" alt="" width="36" height="36"/><span>ТОЧКА ЯСНОСТИ<small>ТАРО И АСТРОЛОГИЯ · ЭЛЬВИРА КЕЛЬИНА</small></span></a><button class="menu-toggle" aria-label="Открыть меню" aria-expanded="false" aria-controls="navigation"><i data-lucide="menu"></i></button><nav id="navigation" aria-label="Основная навигация">{links.map(([href,text])=><a href={href} aria-current={Astro.url.pathname===href?'page':undefined}>{text}</a>)}<a class="nav-contact" href="/contact/" aria-current={Astro.url.pathname==='/contact/'?'page':undefined}>Записаться <i data-lucide="arrow-up-right"></i></a></nav></header>
+<main id="main"><slot/></main>
+<footer class="footer wrap" id="footer">
+<div class="footer-top"><a class="brand" href="/">ТОЧКА ЯСНОСТИ</a><p>Будущее открыто.<br/>Ваш выбор имеет значение.</p><div class="footer-contacts"><h2>Связь:</h2><span class="demo-label">Демо-контакты</span><ul><li>Telegram: @demo_account</li><li>WhatsApp: +7 (000) 000-00-00</li><li>Email: demo@example.com</li></ul></div><a href="/contact/">Начать разговор <i data-lucide="arrow-up-right"></i></a></div>
+<div class="footer-bottom"><span>© {new Date().getFullYear()} Эльвира Кельина</span><div class="footer-legal"><a href="/privacy/">Конфиденциальность</a><a href="#">Согласие на обработку данных</a><a href="#">Публичная оферта</a></div><span>Бережно. Честно. По существу.</span></div><p class="disclaimer">Символические практики для саморефлексии. Не заменяют медицинскую, психологическую, юридическую или финансовую помощь.</p></footer>
+<script>
+import { createIcons, ArrowUpRight, ArrowRight, ArrowDown, Menu, X, Plus, Check, Send, MessageCircle, Copy } from 'lucide';
+createIcons({icons:{ArrowUpRight,ArrowRight,ArrowDown,Menu,X,Plus,Check,Send,MessageCircle,Copy}});
+const menu = document.querySelector<HTMLButtonElement>('.menu-toggle');
+menu?.addEventListener('click',()=>{ const open = menu.getAttribute('aria-expanded') !== 'true'; menu.setAttribute('aria-expanded',String(open)); menu.setAttribute('aria-label',open?'Закрыть меню':'Открыть меню'); document.querySelector('#navigation')?.classList.toggle('is-open',open); });
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){menu?.setAttribute('aria-expanded','false');document.querySelector('#navigation')?.classList.remove('is-open');}});
+</script>
+<script is:inline>
+(function () {
+  if (!window.chatbase || window.chatbase('getState') !== 'initialized') {
+    window.chatbase = (...args) => {
+      if (!window.chatbase.q) window.chatbase.q = [];
+      window.chatbase.q.push(args);
+    };
+    window.chatbase = new Proxy(window.chatbase, {
+      get(target, prop) {
+        if (prop === 'q') return target.q;
+        return (...args) => target(prop, ...args);
+      }
+    });
+  }
+  const onLoad = function () {
+    if (document.getElementById('HS9ZK_ZPpkiVtG_e6skIE')) return;
+    const script = document.createElement('script');
+    script.src = 'https://www.chatbase.co/embed.min.js';
+    script.id = 'HS9ZK_ZPpkiVtG_e6skIE';
+    script.domain = 'www.chatbase.co';
+    document.body.appendChild(script);
+  };
+  if (document.readyState === 'complete') onLoad();
+  else window.addEventListener('load', onLoad, { once: true });
+})();
+</script>
+</body></html>
