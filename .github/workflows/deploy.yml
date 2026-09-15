@@ -28,9 +28,8 @@ jobs:
           FTP_USERNAME: ${{ secrets.FTP_USERNAME }}
           FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
           FTP_SERVER_DIR: ${{ vars.FTP_SERVER_DIR }}
-          SSH_KNOWN_HOSTS: ${{ secrets.SSH_KNOWN_HOSTS }}
         run: |
-          for key in FTP_SERVER FTP_USERNAME FTP_PASSWORD FTP_SERVER_DIR SSH_KNOWN_HOSTS; do
+          for key in FTP_SERVER FTP_USERNAME FTP_PASSWORD FTP_SERVER_DIR; do
             if [ -z "${!key}" ]; then
               echo "::error::Missing setting: $key"
               exit 1
@@ -46,24 +45,14 @@ jobs:
           fi
       - run: npm install
       - run: npm run build
-      - name: Install SFTP client
-        run: sudo apt-get update && sudo apt-get install -y lftp
-      - name: Upload dist to Timeweb over SFTP (port 22)
-        env:
-          FTP_SERVER: ${{ secrets.FTP_SERVER }}
-          FTP_USERNAME: ${{ secrets.FTP_USERNAME }}
-          LFTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
-          FTP_SERVER_DIR: ${{ vars.FTP_SERVER_DIR }}
-          SSH_KNOWN_HOSTS: ${{ secrets.SSH_KNOWN_HOSTS }}
-        run: |
-          install -m 700 -d ~/.ssh
-          printf '%s\n' "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
-          chmod 600 ~/.ssh/known_hosts
-          lftp --env-password -u "$FTP_USERNAME" "sftp://$FTP_SERVER:22" -e "
-            set cmd:fail-exit yes;
-            set net:timeout 30;
-            set net:max-retries 2;
-            set sftp:connect-program 'ssh -a -x -o StrictHostKeyChecking=yes';
-            mirror --reverse --verbose ./dist/ $FTP_SERVER_DIR;
-            bye;
-          "
+      - name: Upload dist to Timeweb over FTP (port 21)
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.6
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          port: 21
+          protocol: ftp
+          local-dir: ./dist/
+          server-dir: ${{ vars.FTP_SERVER_DIR }}
+          dangerous-clean-slate: false
