@@ -8,11 +8,14 @@ import '@fontsource/manrope/500.css';
 import '@fontsource/manrope/cyrillic-400.css';
 import '../styles/global.css';
 import { brand } from '../data/site';
-const { title, description = 'Бережные консультации Таро, матрица и астрологические справки. Честный разговор, практические выводы и свобода выбора.' } = Astro.props;
+import { seo } from '../data/seo';
+const path = Astro.url.pathname === '/404.html' ? '/404/' : Astro.url.pathname.replace(/\/?$/, '/');
+const { title, description } = seo[path] ?? Astro.props;
+const canonical = Astro.site && path !== '/404/' ? new URL(path, Astro.site).href : undefined;
 const links = [['/','Главная'],['/services/','Услуги'],['/about/','Обо мне'],['/process/','Как всё проходит'],['/reviews/','Отзывы']];
 ---
 <!doctype html>
-<html lang="ru"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><meta name="description" content={description}/><meta name="theme-color" content="#0b1026"/><title>{title} · {brand.name}</title><link rel="icon" href="/favicon.svg"/></head>
+<html lang="ru"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><meta name="description" content={description}/><meta name="theme-color" content="#0b1026"/><title>{title}</title>{canonical && <link rel="canonical" href={canonical}/>}<meta name="robots" content={path === '/404/' || !Astro.site ? 'noindex, follow' : 'index, follow'}/><link rel="icon" href="/favicon.svg"/></head>
 <body>
 <a class="skip" href="#main">К содержанию</a>
 <header class="header wrap"><a class="brand" href="/" aria-label="Точка ясности — главная"><img src="/favicon.svg" alt="" width="36" height="36"/><span>ТОЧКА ЯСНОСТИ<small>ТАРО И АСТРОЛОГИЯ · ЭЛЬВИРА КЕЛЬИНА</small></span></a><button class="menu-toggle" aria-label="Открыть меню" aria-expanded="false" aria-controls="navigation"><i data-lucide="menu"></i></button><nav id="navigation" aria-label="Основная навигация">{links.map(([href,text])=><a href={href} aria-current={Astro.url.pathname===href?'page':undefined}>{text}</a>)}<a class="nav-contact" href="/contact/" aria-current={Astro.url.pathname==='/contact/'?'page':undefined}>Записаться <i data-lucide="arrow-up-right"></i></a></nav></header>
