@@ -1,43 +1,45 @@
-# Astro Starter Kit: Minimal
+# Точка ясности
+
+Многостраничный сайт таролога Эльвиры Кельиной на Astro.
+
+## Запуск
 
 ```sh
-npm create astro@latest -- --template minimal
+npm install
+npm run dev
 ```
 
-> 🧑‍🚀 **Seasoned astronaut?** Delete this file. Have fun!
+Сборка: `npm run build`. Проверка сборки: `npm run preview`.
 
-## 🚀 Project Structure
+## Содержание
 
-Inside of your Astro project, you'll see the following folders and files:
+Главная, услуги с четырьмя переключаемыми подробными разделами, о специалисте, процесс консультации, примеры отзывов, запись с FAQ, конфиденциальность.
 
-```text
-/
-├── public/
-├── src/
-│   └── pages/
-│       └── index.astro
-└── package.json
-```
+Основной источник: брендбук и описание практики из Obsidian, включая реальные цены и оговорку о справках, составляемых нейросетью. HEX-коды в брендбуке не заданы; выбраны тёмно-синий `#0b1026`, фиолетовый `#352344`, золотой `#c9aa70`.
 
-Astro looks for `.astro` or `.md` files in the `src/pages/` directory. Each page is exposed as a route based on its file name.
+## Перед публикацией
 
-There's nothing special about `src/components/`, but that's where we like to put any Astro/React/Vue/Svelte/Preact components.
+- Добавить реальные Telegram и WhatsApp в `src/data/site.ts`. Сейчас они намеренно пустые.
+- Заполнить личную историю и образование специалиста, если нужно: факты не выдуманы.
+- Заменить явно отмеченные примеры отзывов реальными с разрешения клиентов.
+- Форма локальная: проверяет поля и согласие, подготавливает текст, позволяет скопировать его. Не отправляет и не хранит данные. После заполнения контактов доступны переходы в мессенджеры; отправку сообщения подтверждает сам посетитель.
+- Для настоящей серверной обработки заявок подключить отдельный обработчик и обновить информацию об обработке данных. Секреты хранить в переменных окружения, а не в клиентском коде.
+- После выбора домена добавить canonical, sitemap и правила индексирования. Домен намеренно не выдуман.
 
-Any static assets, like images, can be placed in the `public/` directory.
+Название «Точка ясности» — авторская редакционная концепция для этого макета; уникальность товарного знака не проверялась.
 
-## 🧞 Commands
+## Визуальные источники
 
-All commands are run from the root of the project, from a terminal:
+Главный экран: настоящая 3D-сцена Three.js, сфера с текстурой и картой рельефа NASA, объёмные орбиты, свет и звёзды. При недоступности WebGL остаётся иллюстрация. Движение приостанавливается кнопкой, вне экрана и при скрытой вкладке; учитывается reduced motion.
 
-| Command                   | Action                                           |
-| :------------------------ | :----------------------------------------------- |
-| `npm install`             | Installs dependencies                            |
-| `npm run dev`             | Starts local dev server at `localhost:4321`      |
-| `npm run build`           | Build your production site to `./dist/`          |
-| `npm run preview`         | Preview your build locally, before deploying     |
-| `npm run astro ...`       | Run CLI commands like `astro add`, `astro check` |
-| `npm run astro -- --help` | Get help using the Astro CLI                     |
+Текстуры Луны: NASA's Scientific Visualization Studio, [CGI Moon Kit](https://svs.gsfc.nasa.gov/4720/), Ernie Wright. Цвет: `lroc_color_2k.jpg`; рельеф: `ldem_3_8bit.jpg`. Файлы включены локально, внешние запросы при просмотре не требуются.
 
-## 👀 Want to learn more?
+Оригинальная иллюстрация создана специально для сайта. Чужие макеты и графические материалы не копировались. Эстетические ориентиры: [Behance](https://www.behance.net/gallery/115533355/Astrology-Web-Design), [Pinterest](https://www.pinterest.com/pin/celestial-tarot-illustrations-and-clip-art-gold-vector-and-png-images-to-create-your-own-mystical-esoteric-arcane-commercial-use-designs-etsy--9359111716939959/).
 
-Feel free to check [our documentation](https://docs.astro.build) or jump into our [Discord server](https://astro.build/chat).
+Шрифты Cormorant Garamond и Manrope включены локально через Fontsource; иконки Lucide. Внешних запросов к шрифтовым сервисам и аналитики нет.
+
+## Проверка
+
+`node verify.mjs` проверяет семь основных страниц при ширине 1440, 390 и 320 пикселей, загрузку изображений, вкладки и управление клавиатурой, перенос услуги в форму, обязательные поля и согласие, FAQ и мобильное меню. Для запуска нужен установленный Chrome и работающий локальный сервер. Адрес можно переопределить через `PREVIEW_URL`.
+
+На странице услуг есть необязательная интеграция WebMCP для выбора формата. Она включается только при наличии браузерного API; в обычном Chrome нативная проверка этого экспериментального API недоступна. Основной интерфейс работает независимо от него.

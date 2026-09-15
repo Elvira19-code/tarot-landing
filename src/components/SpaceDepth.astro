@@ -1,0 +1,40 @@
+<div class="space-depth" aria-hidden="true"><canvas class="space-canvas"></canvas></div>
+<script>
+import * as THREE from 'three';
+const hero=document.querySelector<HTMLElement>('.hero')!;
+const canvas=document.querySelector<HTMLCanvasElement>('.space-canvas')!;
+const reduced=matchMedia('(prefers-reduced-motion: reduce)');
+try{
+ const renderer=new THREE.WebGLRenderer({canvas,alpha:true,antialias:false,powerPreference:'low-power'});
+ renderer.setPixelRatio(Math.min(devicePixelRatio,1.5));renderer.setClearColor(0x000000,0);
+ const scene=new THREE.Scene(),camera=new THREE.PerspectiveCamera(45,1,.1,100);camera.position.z=10;
+ const layers:THREE.Points[]=[];
+ const materials:THREE.ShaderMaterial[]=[];
+ for(let layer=0;layer<3;layer++){
+  const positions:number[]=[],seeds:number[]=[];const count=[220,110,40][layer];
+  for(let i=0;i<count;i++){const rand=(n:number)=>{const a=Math.sin(n*127.1+layer*331)*43758.545;return a-Math.floor(a);};positions.push((rand(i*3+1)-.5)*32,(rand(i*3+2)-.5)*20,[-12,-5,1][layer]-rand(i*3+3)*2);seeds.push(rand(i+100)*6.28);}
+  const geometry=new THREE.BufferGeometry();geometry.setAttribute('position',new THREE.Float32BufferAttribute(positions,3));geometry.setAttribute('seed',new THREE.Float32BufferAttribute(seeds,1));
+  const material=new THREE.ShaderMaterial({transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,uniforms:{time:{value:0},size:{value:[1.8,2.8,4][layer]*Math.min(devicePixelRatio,1.5)},tint:{value:new THREE.Color([0xb8a5d8,0xe4c58d,0xffe3a3][layer])}},vertexShader:`attribute float seed;uniform float time;uniform float size;varying float brightness;void main(){vec4 p=modelViewMatrix*vec4(position,1.);brightness=.25+.75*pow(.5+.5*sin(time*(.5+seed*.09)+seed),2.);gl_PointSize=size*16./-p.z;gl_Position=projectionMatrix*p;}`,fragmentShader:`varying float brightness;uniform vec3 tint;void main(){vec2 p=gl_PointCoord-.5;float halo=smoothstep(.5,.0,length(p));float cross=exp(-abs(p.x)*45.)*exp(-abs(p.y)*7.)+exp(-abs(p.y)*45.)*exp(-abs(p.x)*7.);gl_FragColor=vec4(tint,(halo*.55+cross*.35)*brightness);}`});
+  const points=new THREE.Points(geometry,material);scene.add(points);layers.push(points);materials.push(material);
+ }
+ let paused=hero.classList.contains('sky-paused'),visible=true,raf=0,last=0,time=0;
+ const target=new THREE.Vector2(),current=new THREE.Vector2();
+ const render=()=>renderer.render(scene,camera);
+ function resize(){renderer.setSize(hero.clientWidth,hero.clientHeight,false);camera.aspect=hero.clientWidth/hero.clientHeight;camera.updateProjectionMatrix();render();}
+ function frame(now:number){raf=0;if(reduced.matches){sync();return;}if(paused||!visible||document.hidden){last=0;return;}time+=last?Math.min((now-last)/1000,.05):0;last=now;current.lerp(target,.055);hero.style.setProperty('--space-x',current.x.toFixed(4));hero.style.setProperty('--space-y',current.y.toFixed(4));layers.forEach((layer,i)=>{layer.position.x=current.x*[.10,.28,.62][i];layer.position.y=-current.y*[.07,.20,.44][i];layer.rotation.z=Math.sin(time*.025)*(.002+i*.002);materials[i].uniforms.time.value=time;});render();if(!paused&&!reduced.matches&&visible&&!document.hidden)raf=requestAnimationFrame(frame);}
+ function sync(){if(raf)cancelAnimationFrame(raf);raf=0;last=0;if(reduced.matches){target.set(0,0);current.set(0,0);hero.style.setProperty('--space-x','0');hero.style.setProperty('--space-y','0');layers.forEach(layer=>layer.position.set(0,0,0));}if(!paused&&!reduced.matches&&visible&&!document.hidden)raf=requestAnimationFrame(frame);else render();}
+ const move=(event:PointerEvent)=>{if(event.pointerType!=='mouse')return;const rect=hero.getBoundingClientRect();target.set((event.clientX-rect.left)/rect.width*2-1,(event.clientY-rect.top)/rect.height*2-1);};
+ const leave=()=>target.set(0,0);hero.addEventListener('pointermove',move);hero.addEventListener('pointerleave',leave);
+ const pause=(event:Event)=>{paused=(event as CustomEvent<boolean>).detail;sync();};hero.addEventListener('sky-pause',pause);
+ const ro=new ResizeObserver(resize);ro.observe(hero);const io=new IntersectionObserver(entries=>{visible=entries[0].isIntersecting;sync();});io.observe(hero);
+ document.addEventListener('visibilitychange',sync);reduced.addEventListener('change',sync);
+ canvas.addEventListener('webglcontextlost',()=>{if(raf)cancelAnimationFrame(raf);hero.classList.remove('has-space-depth');});
+ window.addEventListener('pagehide',()=>{if(raf)cancelAnimationFrame(raf);ro.disconnect();io.disconnect();hero.removeEventListener('pointermove',move);hero.removeEventListener('pointerleave',leave);hero.removeEventListener('sky-pause',pause);document.removeEventListener('visibilitychange',sync);reduced.removeEventListener('change',sync);layers.forEach(layer=>layer.geometry.dispose());materials.forEach(mat=>mat.dispose());renderer.dispose();},{once:true});
+ resize();canvas.dataset.ready='true';hero.classList.add('has-space-depth');sync();
+}catch(error){console.warn('Space depth unavailable; static illustration remains.',error);}
+</script>
+<style>
+.space-depth{position:absolute;inset:0;pointer-events:none;z-index:-1;mask-image:linear-gradient(90deg,#0005,#000 65%)}
+.space-canvas{width:100%;height:100%;display:block}
+@media(max-width:600px){.space-depth{mask-image:linear-gradient(#000,#0005 75%)}}
+</style>

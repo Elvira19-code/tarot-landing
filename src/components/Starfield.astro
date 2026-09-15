@@ -1,0 +1,39 @@
+---
+import Moon from './Moon.astro';
+import SpaceDepth from './SpaceDepth.astro';
+const stars = Array.from({length:38},(_,i)=>({ x: 7+(i*37%90), y: 5+(i*23%86), size:i%5===0?3.5:2.2, duration:12+i%9*1.5, twinkle:2.8+i%11*.45, delay:-(i*3.7), drift:18+i%4*8 }));
+---
+<Moon/>
+<SpaceDepth/>
+<div class="starfield" aria-hidden="true">{stars.map(s=><span class="gold-star" style={`left:${s.x}%;top:${s.y}%;--size:${s.size}px;--duration:${s.duration}s;--twinkle:${s.twinkle}s;--delay:${s.delay}s;--drift:${s.drift}px`}/>)}</div>
+<button class="star-toggle" type="button" aria-label="Остановить анимацию неба" title="Остановить анимацию неба" aria-pressed="false" hidden><span class="pause-icon"></span><span class="play-icon" hidden></span></button>
+<script>
+import { createElement, Pause, Play } from 'lucide';
+const toggle=document.querySelector<HTMLButtonElement>('.star-toggle')!;
+toggle.querySelector('.pause-icon')!.append(createElement(Pause));
+toggle.querySelector('.play-icon')!.append(createElement(Play));
+toggle.hidden=false;
+toggle.addEventListener('click',()=>{
+ const paused=toggle.getAttribute('aria-pressed')!=='true';
+ toggle.setAttribute('aria-pressed',String(paused));
+ const label=paused?'Продолжить анимацию неба':'Остановить анимацию неба';
+ toggle.setAttribute('aria-label',label);toggle.title=label;
+ document.querySelector('.starfield')!.classList.toggle('is-paused',paused);
+ document.querySelector('.hero')!.classList.toggle('sky-paused',paused);
+ document.querySelector('.hero')!.dispatchEvent(new CustomEvent('sky-pause',{detail:paused}));
+ toggle.querySelector<HTMLElement>('.pause-icon')!.hidden=paused;
+ toggle.querySelector<HTMLElement>('.play-icon')!.hidden=!paused;
+});
+</script>
+<style>
+.starfield{position:absolute;inset:0;z-index:-1;pointer-events:none;overflow:hidden;mask-image:linear-gradient(90deg,rgba(0,0,0,.45),#000 60%)}
+.gold-star{position:absolute;width:var(--size);height:var(--size);border-radius:50%;background:var(--gold);opacity:.5;animation:star-drift var(--duration) ease-in-out var(--delay) infinite alternate,star-twinkle var(--twinkle) ease-in-out var(--delay) infinite;will-change:transform,opacity}
+@keyframes star-drift{from{transform:translate3d(0,10px,0)}to{transform:translate3d(var(--drift),-24px,0)}}
+@keyframes star-twinkle{0%,100%{opacity:.12}45%{opacity:1}70%{opacity:.4}}
+.starfield.is-paused .gold-star{animation-play-state:paused}
+.star-toggle{position:absolute;bottom:15px;right:max(20px,calc((100% - 1320px)/2));width:44px;height:44px;display:grid;place-items:center;color:var(--gold);border:1px solid var(--line);border-radius:2px;background:rgba(11,16,38,.65);z-index:2}
+.star-toggle:hover{background:var(--violet);border-color:var(--gold)}
+.star-toggle span{display:flex}
+@media(max-width:600px){.starfield{mask-image:linear-gradient(#000,rgba(0,0,0,.15) 75%)}}
+@media(prefers-reduced-motion:reduce){.gold-star{animation:none;opacity:.35}.star-toggle{display:none}}
+</style>

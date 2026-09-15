@@ -1,0 +1,29 @@
+---
+import Layout from '../layouts/Layout.astro';
+import PageHead from '../components/PageHead.astro';
+import { brand, services, faqs } from '../data/site';
+---
+<Layout title="Записаться к тарологу Эльвире Кельиной — контакты и вопросы"><PageHead crumb="Запись и контакты" eyebrow="НАЧНЁМ С ВАШЕГО ВОПРОСА" title="Время" accent="для себя." description="Расскажите немного о своём запросе. Формат, время встречи и детали обсудим лично."/>
+<section class="content-section wrap"><div class="contact-grid"><form id="booking-form" class="contact-form"><h2>Запись на консультацию</h2><p class="note" style="margin-top:0">Демо-версия: форма подготовит текст заявки, но не отправит его. Контакты для записи будут добавлены позже.</p><noscript><p>Для подготовки заявки включите JavaScript. В этой демо-версии данные не отправляются.</p></noscript><div class="fields"><label class="field" for="name">Ваше имя<input id="name" name="name" autocomplete="given-name" required maxlength="80" placeholder="Как к вам обращаться"/></label><label class="field" for="contact">Контакт для ответа<input id="contact" name="contact" autocomplete="off" required minlength="3" maxlength="120" placeholder="@telegram или телефон"/></label><label class="field full" for="service">Формат консультации<select id="service" name="service" required><option value="">Выберите формат</option>{services.map(s=><option value={s.id}>{s.name} · {s.price}</option>)}<option value="unsure">Помогите определиться</option></select></label><label class="field full" for="question">Ваш вопрос <span class="note" style="margin:0">Необязательно. Достаточно нескольких слов.</span><textarea id="question" name="question" maxlength="2000" placeholder="О чём вам хотелось бы поговорить?"/></label></div><label class="consent" for="consent"><input type="checkbox" id="consent" required/><span>Я согласен(на) на использование указанных данных для подготовки заявки и ознакомлен(а) с <a href="/privacy/">информацией о конфиденциальности</a>.</span></label><button type="submit" class="button" disabled>Подготовить заявку <i data-lucide="arrow-up-right"/></button><div class="form-result" id="form-result" hidden role="status" tabindex="-1"><h3>Текст заявки готов</h3><p>Заявка не отправлена. Скопируйте текст; отправить его специалисту можно будет после добавления контактов.</p><pre id="booking-text"></pre><button type="button" class="button secondary" id="copy-booking">Скопировать текст <i data-lucide="copy"/></button><span id="copy-status" class="note" aria-live="polite"></span></div></form><aside class="contact-aside"><p class="eyebrow">ЛИЧНОЕ ОБЩЕНИЕ</p><h2>Другой способ<br/><em>начать разговор.</em></h2><p>Эльвира Кельина<br/>Индивидуальные консультации онлайн</p>{brand.telegram?<a class="contact-option" href={brand.telegram} target="_blank" rel="noopener noreferrer"><i data-lucide="send"/>Telegram<i data-lucide="arrow-up-right"/></a>:<div class="contact-option"><i data-lucide="send"/>Telegram<small>Скоро</small></div>}{brand.whatsapp?<a class="contact-option" href={brand.whatsapp} target="_blank" rel="noopener noreferrer"><i data-lucide="message-circle"/>WhatsApp<i data-lucide="arrow-up-right"/></a>:<div class="contact-option"><i data-lucide="message-circle"/>WhatsApp<small>Скоро</small></div>}<p class="note">Ссылки для связи пока не указаны.</p><p class="note">Пожалуйста, не отправляйте через форму фотографии, документы и сведения о здоровье. Всё необходимое для выбранного разбора обсудим лично.</p></aside></div></section><section class="services-band"><div class="wrap faq"><p class="eyebrow">ПЕРЕД ВСТРЕЧЕЙ</p><h2>Возможно, вы<br/><em>хотели спросить.</em></h2>{faqs.map(([q,a])=><details><summary>{q}<i data-lucide="plus"/></summary><p>{a}</p></details>)}</div></section>
+<script>
+const form = document.querySelector<HTMLFormElement>('#booking-form')!;
+const service = document.querySelector<HTMLSelectElement>('#service')!;
+const selected = new URLSearchParams(location.search).get('service');
+if(selected && [...service.options].some(o=>o.value===selected)) service.value=selected;
+form.querySelector<HTMLButtonElement>('button[type=submit]')!.disabled=false;
+const result=document.querySelector<HTMLElement>('#form-result')!;
+const text=document.querySelector<HTMLElement>('#booking-text')!;
+form.addEventListener('submit',e=>{
+ e.preventDefault();
+ if(!form.reportValidity())return;
+ const name=document.querySelector<HTMLInputElement>('#name')!;
+ const contact=document.querySelector<HTMLInputElement>('#contact')!;
+ if(!name.value.trim() || !contact.value.trim()){(name.value.trim()?contact:name).focus();return;}
+ const question=document.querySelector<HTMLTextAreaElement>('#question')!.value.trim();
+ text.textContent=`Здравствуйте, Эльвира! Хочу записаться на консультацию.\n\nИмя: ${name.value.trim()}\nКонтакт: ${contact.value.trim()}\nФормат: ${service.selectedOptions[0].textContent}${question?'\nВопрос: '+question:''}`;
+ result.hidden=false; result.focus();
+});
+form.addEventListener('input',()=>{result.hidden=true;document.querySelector('#copy-status')!.textContent='';});
+document.querySelector('#copy-booking')!.addEventListener('click',async()=>{const status=document.querySelector('#copy-status')!;try{await navigator.clipboard.writeText(text.textContent||'');status.textContent=' Текст скопирован.';}catch{status.textContent=' Не удалось скопировать автоматически. Выделите текст заявки и скопируйте его вручную.';}});
+</script>
+</Layout>
