@@ -1,0 +1,135 @@
+---
+import {tarotCards} from '../data/tarot';
+---
+<div id="tarot-picker">
+  <div class="deck-toolbar"><p id="card-count" role="status" aria-live="polite"></p><button class="button secondary" type="button" id="new-spread"><i data-lucide="rotate-cw"/> Новый расклад</button></div>
+  <div class="tarot-deck" aria-label="Колода Таро">
+    {tarotCards.map(card => <button type="button" class="tarot-pick" data-card={card.id} aria-label={`Карта ${card.id + 1}`} aria-pressed="false">
+      <span class="tarot-back" aria-hidden="true"><span>{String(card.id + 1).padStart(2, '0')}</span></span>
+      <img hidden data-face src={card.image} alt={card.name} width="300" height="520" loading="lazy"/>
+      <span class="pick-number" hidden aria-hidden="true"></span>
+    </button>)}
+  </div>
+  <button class="button" type="button" id="show-spread" hidden>Показать расклад <i data-lucide="arrow-right"/></button>
+  <section id="tarot-result" hidden aria-labelledby="spread-heading" tabindex="-1">
+    <p class="eyebrow">ВАШИ КАРТЫ</p><h2 id="spread-heading"></h2>
+    <p id="spread-question"></p>
+    <div class="spread-cards"></div>
+    <h3>О ситуации</h3><p id="spread-description"></p>
+    <div id="gigachat-reading" aria-live="polite" hidden></div>
+  </section>
+</div>
+<script>
+import {tarotCards, spreadDetails} from '../data/tarot';
+import {shuffledDeck} from '../lib/tarot-shuffle.mjs';
+const root = document.querySelector<HTMLElement>('#tarot-picker')!;
+const form = root.closest('form')!;
+const select = form.querySelector<HTMLSelectElement>('[name=spread]')!;
+const question = form.querySelector<HTMLTextAreaElement>('[name=question]')!;
+const buttons = [...root.querySelectorAll<HTMLButtonElement>('[data-card]')];
+const show = root.querySelector<HTMLButtonElement>('#show-spread')!;
+const result = root.querySelector<HTMLElement>('#tarot-result')!;
+let selected: {id: number; reversed: boolean}[] = [];
+let order: number[] = [];
+const details = () => spreadDetails[select.value as keyof typeof spreadDetails];
+function newSpread() {
+  selected = [];
+  order = shuffledDeck(order);
+  const container = root.querySelector('.tarot-deck')!;
+  order.forEach((id, index) => {
+    const button = buttons[id];
+    button.dataset.slot = String(index + 1);
+    button.querySelector('.tarot-back span')!.textContent = String(index + 1).padStart(2, '0');
+    container.append(button);
+  });
+  sync();
+}
+function sync() {
+  const limit = details().positions.length;
+  root.querySelector('#card-count')!.textContent = `Выбрано ${selected.length} из ${limit}`;
+  show.hidden = selected.length !== limit;
+  result.hidden = true;
+  for (const button of buttons) {
+    const index = selected.findIndex(card => card.id === Number(button.dataset.card));
+    const card = selected[index];
+    button.setAttribute('aria-pressed', String(!!card));
+    button.disabled = !card && selected.length === limit;
+    button.querySelector<HTMLElement>('.tarot-back')!.hidden = !!card;
+    const face = button.querySelector<HTMLImageElement>('[data-face]')!;
+    face.hidden = !card;
+    face.classList.toggle('reversed', card?.reversed === true);
+    button.setAttribute('aria-label', card ? `${tarotCards[card.id].name}, ${card.reversed ? 'перевёрнутая' : 'прямая'}, выбор ${index + 1}. Отменить выбор` : `Карта ${button.dataset.slot}`);
+    const badge = button.querySelector<HTMLElement>('.pick-number')!;
+    badge.hidden = !card;
+    badge.textContent = String(index + 1);
+  }
+  form.dispatchEvent(new CustomEvent('tarot-selection', {detail: {cards: selected.map(c => c.id), reversed: selected.map(c => c.reversed)}}));
+}
+buttons.forEach(button => button.addEventListener('click', () => {
+  const id = Number(button.dataset.card);
+  if (selected.some(card => card.id === id)) selected = selected.filter(card => card.id !== id);
+  else if (selected.length < details().positions.length) {
+    const random = crypto.getRandomValues(new Uint32Array(1))[0];
+    selected.push({id, reversed: random < 0x80000000});
+  }
+  sync();
+}));
+select.addEventListener('change', newSpread);
+root.querySelector('#new-spread')!.addEventListener('click', newSpread);
+question.addEventListener('input', () => {result.hidden = true;});
+show.addEventListener('click', () => {
+  const spread = details();
+  if (selected.length !== spread.positions.length) return;
+  root.querySelector('#spread-heading')!.textContent = spread.name;
+  root.querySelector('#spread-question')!.textContent = question.value.trim() ? `Ваш вопрос: ${question.value.trim()}` : '';
+  const list = root.querySelector('.spread-cards')!;
+  list.replaceChildren();
+  selected.forEach((selection, index) => {
+    const card = tarotCards[selection.id];
+    const figure = document.createElement('figure');
+    const image = document.createElement('img');
+    image.src = card.image; image.alt = card.name; image.width = 300; image.height = 520;
+    image.classList.toggle('reversed', selection.reversed);
+    const caption = document.createElement('figcaption');
+    const position = document.createElement('span'); position.textContent = `${index + 1}. ${spread.positions[index]}`;
+    const name = document.createElement('strong'); name.textContent = card.name;
+    const orientation = document.createElement('span'); orientation.textContent = selection.reversed ? 'Перевёрнутая' : 'Прямая';
+    caption.append(position, name, orientation); figure.append(image, caption); list.append(figure);
+  });
+  root.querySelector('#spread-description')!.textContent = spread.summary;
+  result.hidden = false;
+  result.focus({preventScroll: true}); result.scrollIntoView({behavior: 'smooth', block: 'start'});
+});
+newSpread();
+</script>
+<style>
+  .deck-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:20px}
+  .deck-toolbar p{margin:0}
+  .deck-toolbar .button{font-size:14px;padding:12px 16px;min-height:44px}
+  .tarot-deck{display:grid;grid-template-columns:repeat(10,minmax(0,1fr));gap:10px;margin:20px 0 28px}
+  .tarot-pick{position:relative;display:block;width:100%;padding:0;aspect-ratio:3/5.2;overflow:hidden;border:1px solid var(--gold);border-radius:5px;background:#19152e;cursor:pointer;transition:transform .15s}
+  .tarot-pick:hover:not(:disabled){transform:translateY(-4px)}
+  .tarot-pick:focus-visible{outline:3px solid #fff;outline-offset:3px}
+  .tarot-pick[aria-pressed=true]{outline:2px solid var(--gold);outline-offset:2px}
+  .tarot-pick:disabled{opacity:.48;cursor:default}
+  .tarot-pick img,.tarot-back{width:100%;height:100%;display:block;position:absolute;inset:0}
+  .tarot-pick img{object-fit:contain;background:#171526}
+  .tarot-back{background:linear-gradient(#19152e44,#19152e44),url('/images/celestial.png') center/cover;box-shadow:inset 0 0 0 5px #171526,inset 0 0 0 6px #c9aa7077;display:grid;place-items:center}
+  .tarot-back span{color:#ffe0a1;font-size:16px;text-shadow:0 2px 3px #000}
+  .pick-number{position:absolute;bottom:3px;right:3px;min-width:24px;padding:2px;background:#0b1026;color:#ffe0a1;border:1px solid var(--gold);border-radius:3px;font-size:13px}
+  #tarot-picker [hidden]{display:none!important}
+  #tarot-result{margin-top:48px;border-top:1px solid var(--line);padding-top:28px;scroll-margin-top:100px}
+  #tarot-result h2{font-size:36px;line-height:1.2}
+  #tarot-result h3{font-size:24px;margin:28px 0 12px}
+  #spread-question{overflow-wrap:anywhere}
+  .spread-cards{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:24px 16px;margin:24px 0 36px}
+  .spread-cards :global(figure){margin:0;min-width:0}
+  .spread-cards :global(img){display:block;width:100%;height:auto;aspect-ratio:3/5.2;object-fit:contain;background:#171526;border:1px solid var(--gold);border-radius:4px}
+  .spread-cards :global(figcaption){display:grid;gap:8px;margin-top:14px;font-size:14px;line-height:1.5;overflow-wrap:anywhere}
+  .spread-cards :global(strong){font-size:17px;color:var(--gold)}
+  #tarot-picker :global(img.reversed){transform:rotate(180deg)}
+  #gigachat-reading{border-block:1px solid var(--line);padding:4px 0 24px;margin:28px 0}
+  @media(max-width:700px){.tarot-deck{grid-template-columns:repeat(6,minmax(0,1fr));gap:8px}.spread-cards{grid-template-columns:repeat(3,minmax(0,1fr))}}
+  @media(max-width:440px){.tarot-deck{grid-template-columns:repeat(4,minmax(0,1fr))}.spread-cards{grid-template-columns:repeat(2,minmax(0,1fr))}#tarot-result h2{font-size:28px}}
+  @media(prefers-reduced-motion:reduce){.tarot-pick{transition:none}}
+</style>

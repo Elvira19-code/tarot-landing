@@ -1,0 +1,10 @@
+---
+import Layout from './Layout.astro';
+const { title } = Astro.props;
+---
+<Layout title={title}><article class="legal-document wrap">
+<nav aria-label="Юридические документы"><a href="/privacy/">Политика</a><a href="/consent/">Согласие</a><a href="/offer/">Оферта</a><a href="/advertising-consent/">Реклама</a></nav>
+<p class="eyebrow">РЕДАКЦИЯ ОТ 24.09.2026</p><h1>{title}</h1>
+<slot/>
+<section id="details"><h2>Реквизиты и обращения</h2><p>Кельина Эльвира Рустемовна.<br/>Самозанятая, плательщик налога на профессиональный доход.<br/>ИНН: 262610565094.<br/>Город: Симферополь, Республика Крым.<br/>Email для обращений: <a href="mailto:elvira1966@gmail.com">elvira1966@gmail.com</a>.<br/>Телефон: <a href="tel:+79785244229">+7 978 524 42 29</a>.</p></section>
+<a class="text-link" href="/contact/">К записи и контактам <i data-lucide="arrow-up-right"/></a></article></Layout>

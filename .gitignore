@@ -5,3 +5,6 @@ dist/
 .env.*
 !.env.example
 test-results/
+private/
+server/__pycache__/
+/*.png

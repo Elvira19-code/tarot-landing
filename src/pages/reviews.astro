@@ -1,11 +1,65 @@
 ---
 import Layout from '../layouts/Layout.astro';
 import PageHead from '../components/PageHead.astro';
-const examples = [
- ['О выборе','«Вместо ответа “увольняться или нет” я увидела, какие условия работы для меня важны. Теперь есть список вопросов, которые хочу обсудить с руководителем».','Иллюстрация запроса о работе','Таро-разбор'],
- ['Об отношениях','«Самым полезным оказался разговор о том, чего я сама хочу от отношений. Стало проще подготовиться к честному разговору, который я давно откладывала».','Иллюстрация запроса об отношениях','Таро-разбор'],
- ['О себе','«Я пришла с ощущением, что стою на месте. Ушла с несколькими небольшими шагами, которые могу попробовать, не переворачивая всю жизнь за один день».','Иллюстрация запроса о переменах','Полный разбор'],
- ['О поддержке','«Было важно, что со мной не спорили и ничего не навязывали. Я могла задавать вопросы и сама решать, какие мысли мне подходят».','Иллюстрация впечатления от встречи','Онлайн-консультация']
+const reviews = [
+  {
+    title: 'Выбор пути',
+    text: '«Обратилась к Эльвире в момент, когда нужно было принять важное решение и я совсем запуталась. Расклад "Выбор пути" помог увидеть ситуацию со стороны и понять, чего я на самом деле хочу. Никаких страшилок и "так предначертано" — просто спокойный разговор, который вернул мне опору. Спасибо!»',
+    author: 'Марина, 34 года'
+  },
+  {
+    title: 'Вокзал на двоих',
+    text: '«Мы с партнёром долго не могли понять, куда движутся наши отношения. Расклад "Вокзал на двоих" показал то, что мы оба боялись сказать вслух. Эльвира провела консультацию очень бережно — без обвинений и давления. Мы вышли с ясностью и планом, что делать дальше. Очень благодарна!»',
+    author: 'Анна, 29 лет'
+  },
+  {
+    title: 'Кельтский крест',
+    text: '«Ситуация казалась безвыходной: работа, деньги, усталость. "Кельтский крест" от Эльвиры разложил всё по полочкам — где я застрял, что мешает, и куда можно двигаться. В конце я получил конкретные рекомендации на ближайший месяц. Прошло две недели — уже вижу изменения. Рекомендую!»',
+    author: 'Дмитрий, 41 год'
+  }
 ];
 ---
-<Layout title="Отзывы о консультациях — демонстрационные примеры"><PageHead crumb="Отзывы" eyebrow="ПОСЛЕ НАШЕГО РАЗГОВОРА" title="У каждой истории" accent="свой отклик." description="Здесь появятся отзывы клиентов, опубликованные с их разрешения. Пока ниже — вымышленные примеры, показывающие возможные темы обратной связи."/><section class="content-section wrap"><div class="reviews">{examples.map(([title,quote,author,type])=><article class="review"><span class="example">ПРИМЕР · НЕ РЕАЛЬНЫЙ ОТЗЫВ</span><h2 style="font-size:32px;margin:22px 0 0">{title}</h2><blockquote>{quote}</blockquote><p>{author}</p><footer>{type}</footer></article>)}</div></section><section class="closing wrap"><h2>Ваша история<br/><em>может начаться с разговора.</em></h2><a class="button" href="/contact/">Обсудить мой вопрос <i data-lucide="arrow-up-right"/></a></section></Layout>
+<Layout title="Отзывы о консультациях | Эльвира Кельина">
+  <PageHead crumb="Отзывы" eyebrow="ПОСЛЕ НАШЕГО РАЗГОВОРА" title="У каждой истории" accent="свой отклик." description="Отзывы о раскладах Таро: о выборе, отношениях и поиске своего пути."/>
+  <section class="reviews-section wrap" aria-label="Отзывы о раскладах Таро">
+    <div class="reviews-grid">
+      {reviews.map(({ title, text, author }, index) => (
+        <article class="review-card" aria-labelledby={`review-title-${index}`}>
+          <header>
+            <p class="eyebrow">ТАРО</p>
+            <h2 id={`review-title-${index}`}>«{title}»</h2>
+          </header>
+          <figure>
+            <blockquote>{text}</blockquote>
+            <figcaption>— {author}</figcaption>
+          </figure>
+        </article>
+      ))}
+    </div>
+  </section>
+  <section class="closing wrap">
+    <h2>Ваша история<br/><em>может начаться с разговора.</em></h2>
+    <a class="button" href="/contact/">Обсудить мой вопрос <i data-lucide="arrow-up-right"/></a>
+  </section>
+</Layout>
+
+<style>
+  .reviews-section { padding-top: 48px; }
+  .reviews-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; }
+  .review-card { display: flex; flex-direction: column; min-width: 0; padding: 30px 28px; background: #17162f; border: 1px solid var(--line); border-top: 2px solid var(--gold); border-radius: 4px; }
+  .review-card:nth-child(2) { background: var(--violet); }
+  .review-card .eyebrow { margin-bottom: 12px; }
+  .review-card h2 { font-size: 32px; line-height: 1.2; color: var(--gold); margin-bottom: 24px; overflow-wrap: anywhere; }
+  .review-card figure { display: flex; flex: 1; flex-direction: column; margin: 0; }
+  .review-card blockquote { margin: 0 0 28px; font-size: 15px; line-height: 1.85; overflow-wrap: anywhere; }
+  .review-card figcaption { margin-top: auto; padding-top: 20px; border-top: 1px solid var(--line); font-size: 14px; line-height: 1.6; color: var(--gold); }
+  @media (max-width: 1100px) {
+    .reviews-grid { grid-template-columns: 1fr; gap: 24px; }
+    .review-card { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); gap: 32px; }
+  }
+  @media (max-width: 600px) {
+    .reviews-section { padding-top: 28px; }
+    .review-card { display: flex; padding: 24px 20px; gap: 0; }
+    .review-card h2 { font-size: 30px; margin-bottom: 20px; }
+  }
+</style>

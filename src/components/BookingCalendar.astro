@@ -1,0 +1,41 @@
+<fieldset class="booking-calendar" data-booking-calendar>
+  <legend>Дата и время консультации</legend>
+  <p class="note">Понедельник — пятница · 11:00, 13:00, 15:00, 17:00 · Москва (UTC+3). Не более трёх консультаций в день.</p>
+  <div class="fields">
+    <label class="field">Дата<input type="date" name="appointmentDate" required/></label>
+    <label class="field">Время, МСК<select name="appointmentTime" required><option value="">Выберите время</option></select></label>
+  </div>
+  <p class="calendar-status" role="status">Загружаем расписание…</p>
+</fieldset>
+<script>
+document.querySelectorAll<HTMLElement>('[data-booking-calendar]').forEach(root=>{
+ const date=root.querySelector<HTMLInputElement>('[name=appointmentDate]')!;
+ const time=root.querySelector<HTMLSelectElement>('[name=appointmentTime]')!;
+ const status=root.querySelector<HTMLElement>('.calendar-status')!;
+ let request=0;
+ async function refresh(){
+  const current=++request;const selected=time.value;time.replaceChildren(new Option('Выберите время',''));
+  root.dispatchEvent(new CustomEvent('booking-availability',{bubbles:true,detail:{ready:false,accepting:null}}));
+  try{
+   const res=await fetch('/api/availability'+(date.value?'?date='+encodeURIComponent(date.value):''));
+   if(!res.ok)throw Error();const data=await res.json();if(current!==request)return;
+   date.min=data.min;date.max=data.max;if(!date.value)date.value=data.date;
+   for(const slot of data.times)time.add(new Option(slot,slot));
+   if(data.times.includes(selected))time.value=selected;
+   status.textContent=!data.accepting?'Временно запись не принимается. Пожалуйста, зайдите позже.':!data.workday?'Нет свободных слотов. Суббота и воскресенье — выходные.':!data.times.length?'Нет свободных слотов':'Свободных консультаций на день: '+Math.min(data.remaining,data.times.length)+'.';
+   root.dispatchEvent(new CustomEvent('booking-availability',{bubbles:true,detail:{ready:true,accepting:data.accepting}}));
+  }catch{if(current!==request)return;status.textContent='Не удалось загрузить расписание. Попробуйте позже.';root.dispatchEvent(new CustomEvent('booking-availability',{bubbles:true,detail:{ready:false,accepting:null}}));}
+ }
+ date.addEventListener('change',()=>{time.value='';refresh();});
+ root.addEventListener('refresh-slots',refresh);
+ window.addEventListener('focus',refresh);
+ setInterval(()=>{if(!document.hidden)refresh();},30000);
+ refresh();
+});
+</script>
+<style>
+ .booking-calendar{min-width:0;margin:24px 0;padding:24px 0;border:0;border-block:1px solid var(--line)}
+ legend{font-size:20px;color:var(--gold);padding-right:12px}
+ .note{margin:12px 0 20px}.fields{gap:20px}.field{min-width:0;margin-bottom:8px}
+ .calendar-status{font-size:14px;margin:12px 0 0;color:var(--muted)}
+</style>

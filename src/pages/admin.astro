@@ -1,0 +1,40 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+<Layout title="Управление записью | Точка ясности">
+<section class="wrap admin-page">
+ <p class="eyebrow">УПРАВЛЕНИЕ</p><h1>Запись на консультации</h1>
+ <form id="admin-login"><label class="field">Ключ администратора<input name="token" type="password" required autocomplete="current-password"/></label><button class="button" type="submit">Войти <i data-lucide="arrow-right"/></button></form>
+ <p id="admin-status" role="status"></p>
+ <div id="admin-content" hidden>
+  <div class="admin-toolbar"><label class="accepting"><input type="checkbox" role="switch" id="accepting"/><span id="accepting-label">Приём заявок</span></label><button class="button secondary" id="admin-logout" type="button">Выйти</button></div>
+  <p id="payment-alert" role="alert" hidden></p>
+  <h2>Заявки</h2><p id="empty" hidden>Пока нет заявок.</p><div id="bookings"></div>
+ </div>
+ <dialog id="edit-booking"><form id="edit-form"><h2 id="edit-title">Изменить запись</h2><input name="id" type="hidden"/><input name="action" type="hidden"/><div id="move-fields"><label class="field">Новая дата<input name="date" type="date"/></label><label class="field">Время, МСК<select name="time"><option>11:00</option><option>13:00</option><option>15:00</option><option>17:00</option></select></label></div><p id="edit-note">Возврат оплаты при необходимости оформляется отдельно.</p><p id="edit-error" role="alert"></p><div class="admin-toolbar"><button class="button" type="submit">Подтвердить</button><button class="button secondary" id="close-edit" type="button">Назад</button></div></form></dialog>
+</section>
+<script>
+const login=document.querySelector<HTMLFormElement>('#admin-login')!,content=document.querySelector<HTMLElement>('#admin-content')!,status=document.querySelector<HTMLElement>('#admin-status')!,toggle=document.querySelector<HTMLInputElement>('#accepting')!,list=document.querySelector<HTMLElement>('#bookings')!;
+const dialog=document.querySelector<HTMLDialogElement>('#edit-booking')!,edit=document.querySelector<HTMLFormElement>('#edit-form')!;
+const serviceNames:Record<string,string>={tarot:'Таро',astrology:'Астрология',matrix:'Матрица',photo:'По фото',unsure:'Помочь с выбором',consultation_tarot:'Консультация Таро',consultation_photo:'Консультация по фото',consultation_full:'Полный разбор'};
+async function api(url:string,data?:unknown){const res=await fetch('/api/admin/'+url,data?{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)}:{});const value=await res.json();if(!res.ok)throw Error(value.error||'Не удалось выполнить запрос.');return value;}
+async function load(){try{const data=await api('state');login.hidden=true;content.hidden=false;toggle.checked=data.accepting;document.querySelector('#accepting-label')!.textContent='Приём заявок: '+(data.accepting?'вкл':'выкл');list.replaceChildren();document.querySelector<HTMLElement>('#empty')!.hidden=!!data.bookings.length;
+ const alert=document.querySelector<HTMLElement>('#payment-alert')!;alert.hidden=!data.paymentReview.length;alert.textContent='Требуют проверки оплаты: '+data.paymentReview.map((o:{id:number})=>'№'+o.id).join(', ');
+ const labels:Record<string,string>={requested:'Заявка',confirmed:'Подтверждена',reserved:'Ожидает оплаты',cancelled:'Отменена',expired:'Бронь истекла'};
+ for(const b of data.bookings){const row=document.createElement('article');row.className='booking-row';const title=document.createElement('h3');title.textContent=`${b.date} · ${b.time} МСК · №${b.id}`;const details=document.createElement('p');details.textContent=[b.data.name,b.data.contact||b.data.email||b.data.phone,serviceNames[b.data.service]||b.data.service,labels[b.status],b.order_id?'Заказ №'+b.order_id:''].filter(Boolean).join(' · ');row.append(title,details);if(b.data.question){const question=document.createElement('p');question.textContent=b.data.question;row.append(question);}if(['requested','reserved','confirmed'].includes(b.status)){const actions=document.createElement('div');actions.className='admin-toolbar';for(const [action,label] of [['confirm','Подтвердить'],['reschedule','Перенести'],['cancel','Отменить']]){if(action==='confirm'&&(b.status!=='requested'))continue;const button=document.createElement('button');button.type='button';button.className='button secondary';button.textContent=label;button.onclick=()=>{(edit.elements.namedItem('id') as HTMLInputElement).value=b.id;(edit.elements.namedItem('action') as HTMLInputElement).value=action;const date=edit.elements.namedItem('date') as HTMLInputElement;date.value=b.date;date.required=action==='reschedule';date.disabled=action!=='reschedule';(edit.elements.namedItem('time') as HTMLSelectElement).value=b.time;document.querySelector<HTMLElement>('#move-fields')!.hidden=action!=='reschedule';document.querySelector('#edit-title')!.textContent=label+' запись №'+b.id;document.querySelector('#edit-error')!.textContent='';dialog.showModal();};actions.append(button);}row.append(actions);}list.append(row);}
+ }catch(e){content.hidden=true;login.hidden=false;status.textContent=(e as Error).message;}}
+login.addEventListener('submit',async event=>{event.preventDefault();try{await api('login',Object.fromEntries(new FormData(login)));login.reset();status.textContent='';await load();}catch(e){status.textContent=(e as Error).message;}});
+toggle.addEventListener('change',async()=>{toggle.disabled=true;try{await api('change',{action:'pause',accepting:toggle.checked});status.textContent=toggle.checked?'Приём заявок включён.':'Приём заявок на паузе.';await load();}catch(e){toggle.checked=!toggle.checked;status.textContent=(e as Error).message;}finally{toggle.disabled=false;}});
+document.querySelector('#admin-logout')!.addEventListener('click',async()=>{await api('logout',{});content.hidden=true;login.hidden=false;list.replaceChildren();status.textContent='Вы вышли.';});
+edit.addEventListener('submit',async event=>{event.preventDefault();const button=edit.querySelector<HTMLButtonElement>('[type=submit]')!;button.disabled=true;try{await api('change',Object.fromEntries(new FormData(edit)));dialog.close();await load();}catch(e){document.querySelector('#edit-error')!.textContent=(e as Error).message;}finally{button.disabled=false;}});
+document.querySelector('#close-edit')!.addEventListener('click',()=>dialog.close());load();
+</script>
+<style>
+ .admin-page{padding-block:48px 80px}.admin-page h1{font-size:48px}.admin-page h2{font-size:32px}#admin-login{max-width:480px}
+ .admin-toolbar{display:flex;align-items:center;flex-wrap:wrap;gap:16px;margin:20px 0}.accepting{display:flex;align-items:center;gap:16px;min-height:48px}.accepting input{width:24px;height:24px;min-height:24px;accent-color:var(--gold);padding:0}
+ #bookings :global(.booking-row){border-top:1px solid var(--line);padding:24px 0;overflow-wrap:anywhere}#bookings :global(h3){font-size:26px;margin:0}#bookings :global(p){color:var(--muted);font-size:14px}
+ #bookings :global(.admin-toolbar){display:flex;flex-wrap:wrap;gap:12px;margin-top:16px}
+ #bookings :global(.button){padding:12px 18px;min-height:44px}
+ dialog{width:min(520px,calc(100% - 32px));max-height:90dvh;overflow:auto;background:var(--navy);color:var(--text);border:1px solid var(--gold);padding:24px;border-radius:4px}dialog::backdrop{background:#080c1dcc}
+ @media(max-width:600px){.admin-page h1{font-size:34px}.admin-toolbar .button{padding:12px 16px}}
+</style>

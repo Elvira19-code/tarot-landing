@@ -2,25 +2,41 @@ name: Deploy to Timeweb
 
 on:
   push:
-    branches: [main]
+    branches: [main, 'codex/**']
   workflow_dispatch:
 
 permissions:
   contents: read
+
+env:
+  SITE_URL: ${{ vars.SITE_URL }}
 
 concurrency:
   group: timeweb-production
   cancel-in-progress: false
 
 jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - run: node --test server/*.test.mjs
+      - run: npm run build
   deploy:
+    needs: verify
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: '24'
           cache: npm
       - name: Validate deployment settings
         env:
@@ -39,16 +55,26 @@ jobs:
             echo '::error::Set FTP_SERVER_DIR to the dedicated website directory, ending in / (not FTP root).'
             exit 1
           fi
-      - run: npm install
+          if [[ ! "$FTP_SERVER" =~ ^[a-zA-Z0-9.-]+$ || ! "$FTP_USERNAME" =~ ^[a-zA-Z0-9_.-]+$ || ! "$FTP_SERVER_DIR" =~ ^[a-zA-Z0-9_./-]+$ ]]; then
+            echo '::error::Invalid server, username or deployment directory.'
+            exit 1
+          fi
+      - name: Require live request API before publishing forms
+        run: node scripts/check-hosting-api.mjs
+      - run: npm ci
       - run: npm run build
-      - name: Upload dist to Timeweb
+      - name: Mark release
+        run: node -e "require('fs').writeFileSync('dist/release.json',JSON.stringify({revision:process.env.GITHUB_SHA}))"
+      - name: Upload dist to Timeweb over FTP (port 21)
         uses: SamKirkland/FTP-Deploy-Action@v4.3.6
         with:
           server: ${{ secrets.FTP_SERVER }}
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
-          protocol: ftps
-          security: strict
+          port: 21
+          protocol: ftp
           local-dir: ./dist/
           server-dir: ${{ vars.FTP_SERVER_DIR }}
           dangerous-clean-slate: false
+      - name: Verify published revision and API
+        run: node scripts/check-hosting-api.mjs --release

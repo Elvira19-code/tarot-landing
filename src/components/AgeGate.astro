@@ -1,0 +1,32 @@
+<dialog id="age-gate" aria-labelledby="age-title" aria-describedby="age-description">
+  <h2 id="age-title">Подтверждение возраста</h2>
+  <p id="age-description">Для доступа к сайту подтвердите, что вам исполнилось 18 лет.</p>
+  <div class="age-actions">
+    <button class="button" id="age-yes" type="button">Да, мне 18+</button>
+    <button class="button secondary" id="age-no" type="button">Нет, мне меньше 18</button>
+  </div>
+</dialog>
+<script>
+const gate = document.querySelector<HTMLDialogElement>('#age-gate')!;
+const key = 'taroway-age-v1';
+const exempt = /^\/18plus\/?$/.test(location.pathname);
+function save(value: string) { try { localStorage.setItem(key, value); } catch {} }
+function check() {
+  let choice = ''; try { choice = localStorage.getItem(key) || ''; } catch {}
+  if (exempt) return;
+  if (choice === 'no') { location.replace('/18plus/'); return; }
+  if (choice !== 'yes' && !gate.open) { gate.showModal(); document.documentElement.classList.add('age-locked'); }
+}
+gate.addEventListener('cancel', event => event.preventDefault());
+document.getElementById('age-yes')!.addEventListener('click', () => {
+  save('yes'); gate.close(); document.documentElement.classList.remove('age-locked');
+});
+document.getElementById('age-no')!.addEventListener('click', () => { save('no'); location.replace('/18plus/'); });
+window.addEventListener('pageshow', check);
+check();
+</script>
+<style>
+dialog{width:min(520px,calc(100% - 32px));max-height:calc(100dvh - 32px);overflow:auto;padding:28px;background:var(--navy);color:var(--text);border:1px solid var(--gold);border-radius:8px;box-shadow:0 16px 60px #0008}
+dialog::backdrop{background:#080c1de0}h2{font-size:32px;line-height:1.2;margin-bottom:16px}.age-actions{display:flex;flex-wrap:wrap;gap:12px}.age-actions button{white-space:normal;min-height:48px;flex:1 1 190px;padding:14px}
+:global(html.age-locked){overflow:hidden}
+</style>

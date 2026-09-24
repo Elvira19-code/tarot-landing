@@ -4,13 +4,43 @@ import PageHead from '../components/PageHead.astro';
 import { services } from '../data/site';
 ---
 <Layout title="Услуги и цены — Таро, астрология, матрица судьбы" description="Форматы консультаций Эльвиры Кельиной: Таро от 4 000 ₽, разбор с фото 5 500 ₽, полный разбор 6 000 ₽. Онлайн, бережно и без фатальных прогнозов.">
-<PageHead crumb="Услуги" eyebrow="ЧЕТЫРЕ СПОСОБА ПОСМОТРЕТЬ ГЛУБЖЕ" title="Ваш вопрос." accent="Ваш формат." description="От одной ситуации до большого разговора о себе. Выберите то, что откликается вашему запросу сейчас."/>
-<section class="content-section wrap"><div class="tabs" role="tablist" aria-label="Форматы консультаций">{services.map((s,i)=><button role="tab" id={'tab-'+s.id} aria-selected={i===0?'true':'false'} aria-controls={'panel-'+s.id} tabindex={i===0?0:-1} data-service={s.id}>{s.name}</button>)}</div>{services.map(s=><article class="service-detail" role="tabpanel" id={'panel-'+s.id} aria-labelledby={'tab-'+s.id} tabindex="0"><div><p class="eyebrow">{s.label} / {s.subtitle}</p><h2>{s.title}</h2><p class="description">{s.description}</p><ul class="included">{s.includes.map(line=><li><i data-lucide="check"/>{line}</li>)}</ul></div><aside class="service-aside"><p class="eyebrow">ВАШ ФОРМАТ</p><p class="price">{s.price}</p><p class="time">{s.time}</p><a class="button" href={'/contact/?service='+s.id}>Выбрать формат <i data-lucide="arrow-up-right"/></a><p class="note">{s.note}</p></aside></article>)}</section>
+<PageHead crumb="Услуги" eyebrow="ВАШ ПУТЬ К ЯСНОСТИ" title="Ваш вопрос." accent="Ваш формат." description="От одной ситуации до большого разговора о себе. Выберите то, что откликается вашему запросу сейчас."/>
+<section class="content-section wrap">
+  <div class="tabs" role="tablist" aria-label="Форматы разборов">
+    {services.map((s,i)=><button type="button" role="tab" id={'tab-'+s.id} aria-selected={i===0?'true':'false'} aria-controls={'panel-'+s.id} tabindex={i===0?0:-1} data-service={s.id}>{s.name}</button>)}
+    <button type="button" role="tab" id="tab-automatic" aria-selected="false" aria-controls="panel-automatic" tabindex="-1" data-service="automatic">Автоматические разборы</button>
+  </div>
+  {services.map((s,i)=><article class="service-detail" role="tabpanel" id={'panel-'+s.id} aria-labelledby={'tab-'+s.id} tabindex="0" hidden={i!==0}>
+    <div><p class="eyebrow">{s.label} / {s.subtitle}</p><h2>{s.title}</h2><p class="description">{s.description}</p><ul class="included">{s.includes.map(line=><li><i data-lucide="check"/>{line}</li>)}</ul></div>
+    <aside class="service-aside">
+      <p class="eyebrow">ВАШ ФОРМАТ</p><p class="price">{s.price}</p><p class="time">{s.time}</p>
+      <form class="format-choice" action="/contact/" method="get">
+        <input type="hidden" name="service" value={s.id}/>
+        <label class="consent" for={'age-'+s.id}><input id={'age-'+s.id} type="checkbox" required autocomplete="off"/><span>Я подтверждаю, что мне исполнилось 18 лет</span></label>
+        <button class="button" type="submit" disabled>Выбрать формат <i data-lucide="arrow-up-right"/></button>
+      </form>
+      <p class="note">{s.note}</p>
+    </aside>
+  </article>)}
+  <article class="service-detail automatic-detail" role="tabpanel" id="panel-automatic" aria-labelledby="tab-automatic" tabindex="0" hidden>
+    <div><p class="eyebrow">05 / ОНЛАЙН-РАЗБОРЫ</p><h2>Автоматические разборы</h2><p class="description">Гороскопы на день, неделю и месяц, натальная карта и расклады Таро. Доступность и сроки персонального разбора согласуем по заявке.</p></div>
+    <aside class="service-aside"><p class="eyebrow">ВАШ РАЗБОР</p><a class="button" href="/order/">Выбрать разбор <i data-lucide="arrow-up-right"/></a></aside>
+  </article>
+</section>
 <section class="quote-band"><div class="wrap"><blockquote>«Не нужно заранее знать все ответы.<br/><em>Достаточно заметить свой вопрос.»</em></blockquote></div></section>
 <section class="closing wrap"><h2>Сложно выбрать?</h2><p class="note">Расскажите, что вас волнует. Вместе определим подходящий формат.</p><a class="text-link" href="/contact/">Обсудить запрос <i data-lucide="arrow-up-right"/></a></section>
 <script>
 const tabs = [...document.querySelectorAll<HTMLButtonElement>('[role=tab]')];
 const panels = [...document.querySelectorAll<HTMLElement>('[role=tabpanel]')];
+document.querySelectorAll<HTMLFormElement>('.format-choice').forEach(form=>{
+ const age=form.querySelector<HTMLInputElement>('input[type=checkbox]')!;
+ const button=form.querySelector<HTMLButtonElement>('button[type=submit]')!;
+ const sync=()=>{button.disabled=!age.checked;};
+ age.checked=false; sync();
+ age.addEventListener('change',sync);
+ window.addEventListener('pageshow',()=>{age.checked=false;sync();});
+ form.addEventListener('submit',event=>{if(!age.checked||!form.reportValidity())event.preventDefault();});
+});
 function selectService(id: string, updateHash = true) {
  if (!tabs.some(t=>t.dataset.service===id)) id='tarot';
  tabs.forEach(t=>{const active=t.dataset.service===id;t.setAttribute('aria-selected',String(active));t.tabIndex=active?0:-1;});
@@ -27,8 +57,21 @@ tabs.forEach((t,index)=>{
 const context = (document as Document & {modelContext?:{registerTool:Function}}).modelContext;
 if(context?.registerTool){
  const controller = new AbortController();
- try { Promise.resolve(context.registerTool({name:'select_consultation_format',title:'Выбрать формат консультации',description:'Показать подробности формата. Не создаёт и не отправляет заявку.',inputSchema:{type:'object',properties:{service:{type:'string',enum:['tarot','astrology','matrix','photo']}},required:['service'],additionalProperties:false},annotations:{readOnlyHint:false},execute(input:{service:string}){if(!input||!tabs.some(t=>t.dataset.service===input.service))throw new Error('Неизвестный формат');return {selected:selectService(input.service)};}},{signal:controller.signal})).catch(()=>{}); }catch{}
+ try { Promise.resolve(context.registerTool({name:'select_consultation_format',title:'Выбрать формат консультации',description:'Показать подробности формата. Не создаёт и не отправляет заявку.',inputSchema:{type:'object',properties:{service:{type:'string',enum:['tarot','astrology','matrix','photo','automatic']}},required:['service'],additionalProperties:false},annotations:{readOnlyHint:false},execute(input:{service:string}){if(!input||!tabs.some(t=>t.dataset.service===input.service))throw new Error('Неизвестный формат');return {selected:selectService(input.service)};}},{signal:controller.signal})).catch(()=>{}); }catch{}
  window.addEventListener('pagehide',()=>controller.abort(),{once:true});
 }
 </script>
+<style>
+ .tabs { flex-wrap: wrap; gap: 12px 28px; }
+ .tabs button { max-width: 100%; text-align: left; }
+ .service-detail > * { min-width: 0; }
+ .service-aside .button { max-width: 100%; white-space: normal; }
+ .automatic-detail h2 { font-size: 48px; overflow-wrap: anywhere; }
+ .format-choice .consent { color: var(--text); }
+ @media(max-width:600px) {
+  .tabs { justify-content: flex-start; gap: 8px 16px; }
+  .tabs button { padding: 10px 0; }
+  .automatic-detail h2 { font-size: 32px; }
+ }
+</style>
 </Layout>

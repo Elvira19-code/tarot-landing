@@ -1,0 +1,25 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+<Layout title="Моя заявка | Точка ясности" description="Статус заявки на консультацию или персональный разбор.">
+<section class="wrap order-page"><p class="eyebrow">МОЯ ЗАЯВКА</p><h1>Заявка на разбор</h1><p id="status" role="status">Проверяем заявку…</p><p id="receipt"></p><p id="appointment"></p><p id="next-step" hidden>Заявка сохранена. Для согласования деталей свяжитесь с Эльвирой и укажите номер заявки. Отправка заявки не является оплатой.</p><a class="text-link" href="/contact/">Контакты Эльвиры</a><br/><a class="text-link" href="/order/">Новая заявка</a><p class="note">Доступ хранится в этой вкладке браузера. Не передавайте её другим людям.</p></section>
+<script>
+const token=sessionStorage.getItem('order-token')||'';
+async function load(){
+ const status=document.getElementById('status')!;
+ if(!token){status.textContent='Откройте заявку в той вкладке, где вы её отправили.';return;}
+ try{
+  const response=await fetch('/api/order',{headers:{Authorization:'Bearer '+token}});
+  if(!response.ok)throw Error('Заявка не найдена. Свяжитесь с Эльвирой.');
+  const order=await response.json();
+  status.textContent='Заявка №'+order.id+'. '+order.service+', '+order.amount+' ₽.';
+  document.getElementById('receipt')!.textContent='Контакт для согласования чека: '+order.receiptContact;
+  const states:Record<string,string>={requested:'ожидает подтверждения',confirmed:'подтверждено',cancelled:'отменено',expired:'бронь истекла',reserved:'зарезервировано'};
+  document.getElementById('appointment')!.textContent=order.booking?'Выбранное время: '+order.booking.date+', '+order.booking.time+' МСК. Статус: '+(states[order.booking.status]||'уточняется')+'.':'';
+  document.getElementById('next-step')!.hidden=false;
+ }catch(e){status.textContent=e instanceof Error?e.message:'Не удалось проверить заявку.';}
+}
+load();
+</script>
+<style>h1{font-size:48px}@media(max-width:600px){h1{font-size:36px}}</style>
+</Layout>

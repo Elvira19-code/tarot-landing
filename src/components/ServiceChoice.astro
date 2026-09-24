@@ -1,0 +1,25 @@
+<aside class="service-choice" id="service-choice" aria-labelledby="service-choice-title" hidden>
+ <h2 id="service-choice-title">Подключить помощника?</h2>
+ <p>Чат Chatbase обрабатывает сообщения и технические данные на сторонних серверах, в том числе в США, и может использовать cookie. Не вводите личные сведения. Без чата сайт и запись доступны полностью. <a href="/privacy/">Подробнее</a></p>
+ <div><button type="button" class="button" id="enable-chat">Подключить чат</button><button type="button" class="button secondary" id="disable-chat">Продолжить без чата</button></div>
+</aside>
+<script is:inline>
+(() => {
+ const key = 'taroway-chat-choice-v1';
+ const panel = document.getElementById('service-choice');
+ let accepted = false;
+ try { accepted = localStorage.getItem(key) === 'allow'; panel.hidden = ['allow','deny'].includes(localStorage.getItem(key)); } catch { panel.hidden = false; }
+ const choose = (value) => {
+  try { localStorage.setItem(key, value); } catch {}
+  panel.hidden = true;
+  if (value === 'allow') { accepted = true; window.dispatchEvent(new Event('taroway-enable-chat')); }
+  else if (accepted) { location.reload(); }
+ };
+ document.getElementById('enable-chat').addEventListener('click', () => choose('allow'));
+ document.getElementById('disable-chat').addEventListener('click', () => choose('deny'));
+ document.getElementById('chat-settings').addEventListener('click', () => { panel.hidden = false; document.getElementById('enable-chat').focus(); });
+})();
+</script>
+<style>
+.service-choice{position:fixed;bottom:20px;left:20px;z-index:10000;max-width:480px;width:calc(100% - 40px);max-height:70dvh;overflow:auto;padding:24px;background:#101429;border:1px solid #c9aa7066;border-radius:8px;box-shadow:0 8px 32px #0006}.service-choice[hidden]{display:none}.service-choice h2{font-size:26px;margin:0 0 12px}.service-choice p{font-size:14px;line-height:1.6;margin:0 0 18px}.service-choice a{color:#c9aa70;text-decoration:underline}.service-choice div{display:flex;flex-wrap:wrap;gap:10px}.service-choice button{min-height:44px;padding:12px 16px;font-size:13px;white-space:normal}
+</style>

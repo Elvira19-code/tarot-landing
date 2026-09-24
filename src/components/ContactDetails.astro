@@ -1,0 +1,8 @@
+---
+import { brand, contacts } from '../data/site';
+---
+<div class="contact-details">
+ <h2>Контакты и реквизиты</h2>
+ <p>Эльвира Кельина<br/>ИНН: {brand.inn}<br/>{brand.status}<br/>Город: Симферополь, Республика Крым</p>
+ <ul>{contacts.map(contact => <li><a href={contact.href} target={contact.external ? '_blank' : undefined} rel={contact.external ? 'noopener noreferrer' : undefined}><span>{contact.label}</span>{contact.text}</a></li>)}</ul>
+</div>
