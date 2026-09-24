@@ -18,8 +18,23 @@ server listening on 127.0.0.1 behind HTTPS. Validate backups, ownership, firewal
 and operator access before accepting real personal data. Never upload the
 development private/ directory, .env, admin.token or QA SQLite databases.
 
-No VPS changes have been made by this preparation. DNS/reverse-proxy changes
-require verified access and target configuration, not guessed credentials.
+## VPS preparation (2026-09-24)
+
+The owner approved preparing a move of both site and API to the existing VPS
+147.45.157.115. Public DNS still resolves to 92.53.96.169; it must not change
+until HTTPS, API tests, backups and rollback are ready.
+
+Node 24.21.0 was installed under /opt/node-v24.21.0-linux-x64 from the official
+archive after SHA-256 verification. Release 126a7f8 was extracted under
+/opt/taroway/site-126a7f8, separately from the existing Python venv and key.
+The service template deploy/taroway-api.service expects /opt/taroway/site to
+point to the reviewed release. It binds the application's loopback listener on
+4325 and keeps SQLite and the generated administrator token in a private
+/var/lib/taroway-site directory. Do not print or commit that token.
+
+The service template alone does not provide HTTPS, reverse proxy, backups or
+a production deployment pipeline. Verify those before changing DNS. The
+current GitHub workflow still deploys static files by FTP only on main.
 
 ## GitHub Actions
 

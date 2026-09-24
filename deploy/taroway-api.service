@@ -1,0 +1,32 @@
+[Unit]
+Description=Taroway request and booking API
+After=network.target
+
+[Service]
+Type=simple
+User=taroway
+Group=taroway
+WorkingDirectory=/opt/taroway/site
+ExecStart=/opt/node-v24.21.0-linux-x64/bin/node /opt/taroway/site/server/app.mjs
+Environment=NODE_ENV=production
+Environment=PAYMENT_MODE=requests
+Environment=APP_ORIGIN=https://taroway.com
+Environment=SITE_URL=https://taroway.com
+Environment=PORT=4325
+Environment=DATA_DIR=/var/lib/taroway-site
+StateDirectory=taroway-site
+StateDirectoryMode=0700
+UMask=0077
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+
+[Install]
+WantedBy=multi-user.target
