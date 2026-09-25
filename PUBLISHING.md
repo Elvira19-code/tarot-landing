@@ -36,6 +36,17 @@ The service template alone does not provide HTTPS, reverse proxy, backups or
 a production deployment pipeline. Verify those before changing DNS. The
 current GitHub workflow still deploys static files by FTP only on main.
 
+On 2026-09-25 taroway-api.service was installed and enabled on the VPS. The
+loopback /api/availability endpoint returned a valid Europe/Moscow calendar.
+Certbot from Ubuntu was installed; DNS-01 issuance is being prepared before
+the DNS switch. deploy/taroway.nginx.conf is a pending configuration, not yet
+installed. It requires the issued certificate. After the DNS switch, replace
+manual renewal with a tested webroot renewal using /var/www/letsencrypt;
+manual DNS issuance by itself does not provide unattended renewal.
+
+TRUST_LOCAL_PROXY=1 is only suitable behind the supplied local Nginx proxy,
+which overwrites X-Real-IP. Other peers and malformed addresses are ignored.
+
 ## GitHub Actions
 
 The verify job builds and runs server tests on main and codex branches.

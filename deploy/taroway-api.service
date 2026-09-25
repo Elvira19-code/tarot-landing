@@ -13,6 +13,7 @@ Environment=PAYMENT_MODE=requests
 Environment=APP_ORIGIN=https://taroway.com
 Environment=SITE_URL=https://taroway.com
 Environment=PORT=4325
+Environment=TRUST_LOCAL_PROXY=1
 Environment=DATA_DIR=/var/lib/taroway-site
 StateDirectory=taroway-site
 StateDirectoryMode=0700

@@ -7,6 +7,7 @@ import {fileURLToPath} from 'node:url';
 import {catalog,deck,validate} from './catalog.mjs';
 import {createBookings,validateBooking,moscowDate,PAUSED} from './bookings.mjs';
 import {paymentParams} from './payment.mjs';
+import {clientIp} from './client-ip.mjs';
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const dataDir=process.env.DATA_DIR||path.join(root,'private');
 await mkdir(dataDir,{recursive:true});
@@ -32,7 +33,7 @@ function reply(res,status,data,type='application/json'){res.writeHead(status,{'C
 async function body(req){let data='';for await(const chunk of req){data+=chunk;if(Buffer.byteLength(data)>16000)throw Error('Слишком большой запрос.');}return data;}
 function auth(req){const t=(req.headers.authorization||'').replace(/^Bearer /,'');return db.prepare('SELECT * FROM orders WHERE token=?').get(hash(t));}
 const rates=new Map();
-function limited(req,kind,max=10){const key=kind+':'+req.socket.remoteAddress,now=Date.now(),times=(rates.get(key)||[]).filter(t=>now-t<60000);if(times.length>=max)return true;times.push(now);rates.set(key,times);return false;}
+function limited(req,kind,max=10){const key=kind+':'+clientIp(req,process.env.TRUST_LOCAL_PROXY==='1'),now=Date.now(),times=(rates.get(key)||[]).filter(t=>now-t<60000);if(times.length>=max)return true;times.push(now);rates.set(key,times);return false;}
 setInterval(()=>{const now=Date.now();for(const [key,times]of rates)if(!times.some(t=>now-t<60000))rates.delete(key);for(const [key,expiry]of sessions)if(expiry<now)sessions.delete(key);},60000).unref();
 const server=http.createServer(async(req,res)=>{try{
  const url=new URL(req.url,'http://localhost');
