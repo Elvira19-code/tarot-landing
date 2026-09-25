@@ -71,3 +71,25 @@ mode and production rejects enabling it.
 
 The earlier BOOKING-RELEASE.md and ORDER-SYSTEM.md describe the development
 payment experiments; this document defines the publication gate.
+
+## VPS maintenance
+
+Install deploy/backup.py as /usr/local/lib/taroway/backup.py, and the backup
+service/timer in /etc/systemd/system. Create /var/backups/taroway with root
+ownership and mode 0700. The daily timer makes a consistent SQLite online
+backup, includes the admin token and server configuration, then reads back
+the archived database and checks its integrity. Archives are private 0600.
+No automatic deletion is configured; monitor disk usage and establish a
+retention policy. These are same-server copies, not disaster recovery.
+An independent off-VPS backup still needs an agreed destination.
+
+Install deploy/update-vps.sh as /usr/local/sbin/taroway-update (0750, root).
+Run it with the full 40-character SHA of a reviewed commit whose GitHub
+checks succeeded. It downloads only that pinned release, builds and tests
+as taroway, backs up before switching, atomically changes code/static links,
+and checks the API and HTTPS. Failed post-switch checks restore prior code
+and static files, not the database. Schema changes require a separately
+reviewed migration and restore plan. Old releases are retained for rollback.
+This is an operator-triggered VPS deployment; GitHub Actions does NOT yet
+deploy to the VPS automatically. Do not use the main-branch FTP job for VPS
+updates. No new SSH or GitHub credentials are required by this procedure.

@@ -26,6 +26,8 @@ jobs:
           cache: npm
       - run: npm ci
       - run: node --test server/*.test.mjs
+      - run: python3 deploy/test_backup.py
+      - run: bash -n deploy/update-vps.sh
       - run: npm run build
   deploy:
     needs: verify

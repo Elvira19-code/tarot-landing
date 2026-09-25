@@ -1,0 +1,12 @@
+[Unit]
+Description=Taroway private database backup and restore check
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 /usr/local/lib/taroway/backup.py
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/backups/taroway /var/lib/taroway-site
