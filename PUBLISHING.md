@@ -38,9 +38,19 @@ current GitHub workflow still deploys static files by FTP only on main.
 
 On 2026-09-25 taroway-api.service was installed and enabled on the VPS. The
 loopback /api/availability endpoint returned a valid Europe/Moscow calendar.
-Certbot from Ubuntu was installed; DNS-01 issuance is being prepared before
-the DNS switch. deploy/taroway.nginx.conf is a pending configuration, not yet
-installed. It requires the issued certificate. After the DNS switch, replace
+Certbot issued the certificate for taroway.com and www.taroway.com, expiring
+2026-12-24. Nginx is installed and its configuration passed nginx -t.
+Release da13ea2 runs the API. Public dist files were copied to /var/www/taroway
+because /opt/taroway is intentionally private; do not relax its permissions.
+Future releases must update both the API symlink and the public static files.
+External TLS verification against the VPS certificate passed. The home,
+order, services, contact, reviews and offer pages, catalog and availability
+returned 200; unauthenticated /api/admin/state returned 401.
+The checking environment routed SNI requests to the old host despite a forced
+IP. A direct IP TLS check without SNI, with explicit certificate hostname
+validation for taroway.com, reached the VPS and matched its certificate.
+DNS has not been switched. Backups and a VPS deployment pipeline remain
+publication gates. After the DNS switch, replace
 manual renewal with a tested webroot renewal using /var/www/letsencrypt;
 manual DNS issuance by itself does not provide unattended renewal.
 
