@@ -41,7 +41,11 @@ const aliases:Record<string,{service:string,spread?:string}>={
 const chosen=requested?(aliases[requested]||{service:requested}):null;
 if(chosen&&Object.hasOwn(catalog,chosen.service)){
  (form.querySelector(`input[value="${chosen.service}"]`) as HTMLInputElement).checked=true;
- if(chosen.spread)(form.elements.namedItem('spread') as HTMLSelectElement).value=chosen.spread;
+ if(chosen.spread){
+  const spread=form.elements.namedItem('spread') as HTMLSelectElement;
+  spread.value=chosen.spread;
+  spread.dispatchEvent(new Event('change',{bubbles:true}));
+ }
 }
 function sync(){const data=new FormData(form);const consultation=String(data.get('service')).startsWith('consultation_');const tarot=data.get('service')==='tarot',period=!consultation&&!tarot&&data.get('service')!=='natal';for(const [id,active]of [['astro-fields',!tarot&&!consultation],['tarot-fields',tarot],['consultation-fields',consultation]] as const){const el=document.getElementById(id)!;el.hidden=!active;el.querySelectorAll<HTMLInputElement>('input,select,textarea').forEach(input=>input.disabled=!active);}const start=form.elements.namedItem('start') as HTMLInputElement;start.disabled=!period;document.getElementById('period-field')!.hidden=!period;document.getElementById('period-note')!.hidden=!period;(form.elements.namedItem('question') as HTMLTextAreaElement).required=tarot;(form.elements.namedItem('consultationQuestion') as HTMLTextAreaElement).required=consultation;review.hidden=true;syncAge();}
 form.addEventListener('change',sync);form.addEventListener('input',()=>review.hidden=true);
