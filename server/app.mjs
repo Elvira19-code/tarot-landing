@@ -7,6 +7,7 @@ import {fileURLToPath} from 'node:url';
 import {catalog,deck,validate} from './catalog.mjs';
 import {createBookings,validateBooking,moscowDate,PAUSED} from './bookings.mjs';
 import {paymentParams} from './payment.mjs';
+import {generateReading} from './gigachat.mjs';
 import {clientIp} from './client-ip.mjs';
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const dataDir=process.env.DATA_DIR||path.join(root,'private');
@@ -14,6 +15,7 @@ await mkdir(dataDir,{recursive:true});
 const db=new DatabaseSync(path.join(dataDir,'orders.sqlite'));
 db.exec(`PRAGMA journal_mode=WAL; CREATE TABLE IF NOT EXISTS orders(id INTEGER PRIMARY KEY AUTOINCREMENT, token TEXT UNIQUE NOT NULL, data TEXT NOT NULL, amount INTEGER NOT NULL, state TEXT NOT NULL, result TEXT, created TEXT NOT NULL, legal TEXT NOT NULL);`);
 const bookings=createBookings(db);
+db.exec('CREATE TABLE IF NOT EXISTS payments (order_id INTEGER PRIMARY KEY, amount TEXT NOT NULL, mode TEXT NOT NULL, paid_at TEXT NOT NULL)');
 const adminFile=path.join(dataDir,'admin.token');
 if(!process.env.ADMIN_TOKEN){try{await writeFile(adminFile,randomBytes(32).toString('base64url'),{flag:'wx',mode:0o600});}catch(e){if(e.code!=='EEXIST')throw e;}}
 const adminToken=process.env.ADMIN_TOKEN||(await readFile(adminFile,'utf8')).trim();
@@ -22,12 +24,17 @@ const sessions=new Map();
 const cookieSecure=process.env.APP_ORIGIN?.startsWith('https://')?'; Secure':'';
 function admin(req){const id=(req.headers.cookie||'').split(';').map(s=>s.trim()).find(s=>s.startsWith('taroway_admin='))?.slice(14);return id&&sessions.get(id)>Date.now();}
 const mode=process.env.PAYMENT_MODE||'requests';
-if(!['requests','demo','robokassa-test'].includes(mode))throw Error('Live payments disabled pending fiscalization and production review');
-if(process.env.NODE_ENV==='production'&&mode!=='requests')throw Error('Production accepts requests only until payment and generation are integrated');
+if(!['requests','demo','robokassa-test','robokassa'].includes(mode))throw Error('Unknown payment mode');
+if(process.env.NODE_ENV==='production'&&['demo','robokassa-test'].includes(mode))throw Error('Test payments are forbidden in production');
 const login=process.env.ROBOKASSA_LOGIN,p1=process.env.ROBOKASSA_PASSWORD_1,p2=process.env.ROBOKASSA_PASSWORD_2;
-if(mode==='robokassa-test'&&(!login||!p1||!p2))throw Error('Test Robokassa credentials required');
+const robo=['robokassa','robokassa-test'].includes(mode);
+if(robo&&(!login||!p1||!p2||p1===p2))throw Error('Distinct Robokassa passwords required');
+if(mode==='robokassa'&&process.env.ROBOKASSA_RECEIPTS_READY!=='1')throw Error('Confirm merchant and receipt setup before enabling payments');
+const algorithm=process.env.ROBOKASSA_HASH||'sha256';
+if(!['sha256','md5'].includes(algorithm))throw Error('Unsupported signature algorithm');
+const payableServices=['consultation_tarot','consultation_photo','consultation_full',...(process.env.GIGACHAT_ENABLED==='1'?['tarot']:[])];
 const hash=s=>createHash('sha256').update(s).digest('hex');
-const signature=s=>createHash('sha256').update(s).digest('hex');
+const signature=s=>createHash(algorithm).update(s).digest('hex');
 const equal=(a,b)=>{const x=Buffer.from(a),y=Buffer.from(b);return x.length===y.length&&timingSafeEqual(x,y);};
 function reply(res,status,data,type='application/json'){res.writeHead(status,{'Content-Type':type+'; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer'});res.end(type==='application/json'?JSON.stringify(data):data);}
 async function body(req){let data='';for await(const chunk of req){data+=chunk;if(Buffer.byteLength(data)>16000)throw Error('Слишком большой запрос.');}return data;}
@@ -37,21 +44,26 @@ function limited(req,kind,max=10){const key=kind+':'+clientIp(req,process.env.TR
 setInterval(()=>{const now=Date.now();for(const [key,times]of rates)if(!times.some(t=>now-t<60000))rates.delete(key);for(const [key,expiry]of sessions)if(expiry<now)sessions.delete(key);},60000).unref();
 const server=http.createServer(async(req,res)=>{try{
  const url=new URL(req.url,'http://localhost');
- if(req.method==='GET'&&url.pathname==='/api/catalog')return reply(res,200,{catalog,mode});
+ if(req.method==='GET'&&url.pathname==='/api/catalog')return reply(res,200,{catalog,mode,payableServices:robo?payableServices:[]});
  if(req.method==='GET'&&url.pathname==='/api/availability')return reply(res,200,bookings.availability(url.searchParams.get('date')||moscowDate()));
  if(req.method==='POST'&&url.pathname==='/api/robokassa/result'){
-  if(mode!=='robokassa-test')return reply(res,403,{error:'Disabled'});
+  if(!robo)return reply(res,503,{error:'Payment configuration pending'});
   const fields=new URLSearchParams(await body(req));for(const key of fields.keys())if(fields.getAll(key).length!==1)throw Error('Invalid parameters');
   const custom=[...fields.keys()].filter(k=>k.startsWith('Shp_')).sort();
   if(custom.some(k=>!['Shp_receipt_contact','Shp_receipt_method'].includes(k)))return reply(res,403,{error:'Invalid parameters'});
   const suffix=custom.map(k=>`:${k}=${fields.get(k)}`).join('');
   const amount=fields.get('OutSum')||'',id=fields.get('InvId')||'',sig=fields.get('SignatureValue')||'';
-  if(!/^\d+\.\d{1,6}$|^\d+$/.test(amount)||!/^\d+$/.test(id)||!equal(signature(`${amount}:${id}:${p2}${suffix}`),sig.toLowerCase()))return reply(res,403,{error:'Invalid signature'});
+  if(!/^\d+(?:\.\d{1,6})?$/.test(amount)||! /^[1-9]\d*$/.test(id)||!Number.isSafeInteger(Number(id))||!equal(signature(`${amount}:${id}:${p2}${suffix}`),sig.toLowerCase()))return reply(res,403,{error:'Invalid signature'});
   const order=db.prepare('SELECT * FROM orders WHERE id=?').get(Number(id));
   if(!order||Number(amount)!==order.amount)return reply(res,400,{error:'Invalid amount'});
   const saved=JSON.parse(order.data);
   if(saved.receiptMethod&&(custom.length!==2||fields.get('Shp_receipt_method')!==saved.receiptMethod||fields.get('Shp_receipt_contact')!==(saved.email||saved.phone)))return reply(res,400,{error:'Receipt contact mismatch'});
-  bookings.atomic(()=>{if(order.state!=='pending')return;try{bookings.paid(order.id);db.prepare("UPDATE orders SET state='queued' WHERE id=?").run(order.id);}catch{db.prepare("UPDATE orders SET state='payment_review' WHERE id=?").run(order.id);}});
+  bookings.atomic(()=>{
+   if(db.prepare('SELECT order_id FROM payments WHERE order_id=?').get(order.id))return;
+   db.prepare('INSERT INTO payments VALUES (?,?,?,?)').run(order.id,amount,mode,new Date().toISOString());
+   if(order.state!=='pending'){db.prepare("UPDATE orders SET state='payment_review' WHERE id=?").run(order.id);return;}
+   try{bookings.paid(order.id);db.prepare('UPDATE orders SET state=? WHERE id=?').run(catalog[saved.service].consultation?'paid_consultation':'queued',order.id);}catch{db.prepare("UPDATE orders SET state='payment_review' WHERE id=?").run(order.id);}
+  });
   return reply(res,200,`OK${id}`,'text/plain');
  }
  if(url.pathname.startsWith('/api/')){
@@ -77,7 +89,8 @@ const server=http.createServer(async(req,res)=>{try{
   if(req.method==='POST'&&url.pathname==='/api/orders'){
    if(limited(req,'order'))return reply(res,429,{error:'Слишком много запросов. Подождите минуту.'});
    const data=validate(JSON.parse(await body(req)));const token=randomBytes(32).toString('base64url');
-   const row=bookings.atomic(()=>{if(!bookings.accepting())throw Error(PAUSED);const row=db.prepare('INSERT INTO orders(token,data,amount,state,created,legal) VALUES(?,?,?,?,?,?)').run(hash(token),JSON.stringify(data),catalog[data.service].price,mode==='requests'?'requested':'pending',new Date().toISOString(),'offer+consent 2026-09-24');if(catalog[data.service].consultation)bookings.reserve(data,Number(row.lastInsertRowid),mode==='requests');return row;});
+   const requestOnly=mode==='requests'||(robo&&!payableServices.includes(data.service))||(mode==='robokassa'&&data.receiptMethod==='sms');
+   const row=bookings.atomic(()=>{if(!bookings.accepting())throw Error(PAUSED);const row=db.prepare('INSERT INTO orders(token,data,amount,state,created,legal) VALUES(?,?,?,?,?,?)').run(hash(token),JSON.stringify(data),catalog[data.service].price,requestOnly?'requested':'pending',new Date().toISOString(),'offer+consent 2026-09-24');if(catalog[data.service].consultation)bookings.reserve(data,Number(row.lastInsertRowid),requestOnly);return row;});
    return reply(res,201,{token,id:Number(row.lastInsertRowid),amount:catalog[data.service].price});
   }
   const order=auth(req);if(!order)return reply(res,404,{error:'Заказ не найден. Откройте страницу в том же браузере.'});
@@ -87,7 +100,10 @@ const server=http.createServer(async(req,res)=>{try{
    if(order.state!=='pending')return reply(res,409,{error:'Заказ уже обрабатывается.'});
    bookings.requireReservation(order.id);
    if(mode==='demo'){bookings.atomic(()=>{bookings.paid(order.id);db.prepare("UPDATE orders SET state='queued' WHERE id=? AND state='pending'").run(order.id);});return reply(res,200,{demo:true});}
-   const params=paymentParams(order,JSON.parse(order.data),login,p1);
+   const saved=JSON.parse(order.data);
+   if(!payableServices.includes(saved.service))return reply(res,409,{error:'Оплата этой услуги пока недоступна.'});
+   if(saved.receiptMethod==='sms'&&mode==='robokassa')return reply(res,409,{error:'Для онлайн-оплаты пока выберите чек на email. Доставка чека по СМС ещё не подключена.'});
+   const params=paymentParams(order,saved,login,p1,{test:mode==='robokassa-test',algorithm});
    return reply(res,200,{url:'https://auth.robokassa.ru/Merchant/Index.aspx',params});
   }
   return reply(res,404,{error:'Not found'});
@@ -101,9 +117,9 @@ const server=http.createServer(async(req,res)=>{try{
 // Durable queue: payment callbacks only enqueue. A restart retries interrupted work.
 db.prepare("UPDATE orders SET state='queued' WHERE state='processing'").run();
 let busy=false;
-setInterval(async()=>{if(mode==='requests'||busy)return;const order=db.prepare("SELECT * FROM orders WHERE state='queued' ORDER BY id LIMIT 1").get();if(!order)return;busy=true;
+setInterval(async()=>{if(mode!=='robokassa'||process.env.GIGACHAT_ENABLED!=='1'||busy)return;const order=db.prepare("SELECT orders.* FROM orders JOIN payments ON payments.order_id=orders.id WHERE state='queued' AND payments.mode='robokassa' ORDER BY orders.id LIMIT 1").get();if(!order)return;busy=true;
  try{db.prepare("UPDATE orders SET state='processing' WHERE id=?").run(order.id);const d=JSON.parse(order.data);
-  const result='ДЕМОНСТРАЦИЯ. Это не персональный разбор. Деньги не списывались.\n\n'+(d.service==='tarot'?'Зафиксированные карты: '+d.cards.map((i,index)=>deck[i]+' ('+(d.reversed?.[index]?'перевёрнутая':'прямая')+')').join(', '):'Выбранный формат: '+catalog[d.service].name+(d.start?'\nПериод: '+d.start+' — '+d.end:''))+'\n\nРасчёт Kerykeion и генерация GigaChat требуют отдельной настройки. Реальная генерация в этой версии отключена.';
+  const result=await generateReading(d);
   db.prepare("UPDATE orders SET state='ready',result=? WHERE id=?").run(result,order.id);
  }catch{db.prepare("UPDATE orders SET state='failed' WHERE id=?").run(order.id);}finally{busy=false;}
 },1000);

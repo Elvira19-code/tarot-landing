@@ -2,9 +2,12 @@
 import Layout from '../layouts/Layout.astro';
 ---
 <Layout title="Моя заявка | Точка ясности" description="Статус заявки на консультацию или персональный разбор.">
-<section class="wrap order-page"><p class="eyebrow">МОЯ ЗАЯВКА</p><h1>Заявка на разбор</h1><p id="status" role="status">Проверяем заявку…</p><p id="receipt"></p><p id="appointment"></p><p id="next-step" hidden>Заявка сохранена. Для согласования деталей свяжитесь с Эльвирой и укажите номер заявки. Отправка заявки не является оплатой.</p><a class="text-link" href="/contact/">Контакты Эльвиры</a><br/><a class="text-link" href="/order/">Новая заявка</a><p class="note">Доступ хранится в этой вкладке браузера. Не передавайте её другим людям.</p></section>
+<section class="wrap order-page"><p class="eyebrow">МОЙ ЗАКАЗ</p><h1>Ваш разбор</h1><p id="status" role="status">Проверяем заказ…</p><p id="receipt"></p><p id="appointment"></p><p id="payment-status" role="status"></p><button class="button" id="pay" hidden>Оплатить</button><p id="payment-error" role="alert"></p><article id="reading" hidden style="white-space:pre-wrap"></article><p id="next-step" hidden>Заявка сохранена. Для согласования деталей свяжитесь с Эльвирой и укажите номер заявки. Отправка заявки не является оплатой.</p><a class="text-link" href="/contact/">Контакты Эльвиры</a><br/><a class="text-link" href="/order/">Новая заявка</a><p class="note">Доступ хранится в этой вкладке браузера. Не передавайте её другим людям.</p></section>
 <script>
+import {pay} from '../lib/pay';
 const token=sessionStorage.getItem('order-token')||'';
+const paymentButton=document.getElementById('pay') as HTMLButtonElement;
+paymentButton.onclick=async()=>{paymentButton.disabled=true;try{await pay(token);}catch(e){document.getElementById('payment-error')!.textContent=e instanceof Error?e.message:'Не удалось открыть оплату.';paymentButton.disabled=false;}};
 async function load(){
  const status=document.getElementById('status')!;
  if(!token){status.textContent='Откройте заявку в той вкладке, где вы её отправили.';return;}
@@ -16,7 +19,12 @@ async function load(){
   document.getElementById('receipt')!.textContent='Контакт для согласования чека: '+order.receiptContact;
   const states:Record<string,string>={requested:'ожидает подтверждения',confirmed:'подтверждено',cancelled:'отменено',expired:'бронь истекла',reserved:'зарезервировано'};
   document.getElementById('appointment')!.textContent=order.booking?'Выбранное время: '+order.booking.date+', '+order.booking.time+' МСК. Статус: '+(states[order.booking.status]||'уточняется')+'.':'';
-  document.getElementById('next-step')!.hidden=false;
+  document.getElementById('next-step')!.hidden=order.state!=='requested';
+  const labels:Record<string,string>={pending:'Ожидает оплаты',queued:'Оплата получена. Разбор в очереди.',processing:'Готовим ваш персональный разбор…',ready:'Разбор готов',paid_consultation:'Оплата получена. Консультация забронирована.',failed:'Оплата сохранена, но разбор не удалось подготовить. Свяжитесь с Эльвирой; повторно платить не нужно.',payment_review:'Оплата получена. Требуется согласование с Эльвирой.'};
+  document.getElementById('payment-status')!.textContent=labels[order.state]||'';
+  paymentButton.hidden=order.state!=='pending'||order.receiptMethod==='sms';
+  const reading=document.getElementById('reading')!;reading.hidden=order.state!=='ready';reading.textContent=order.state==='ready'?order.result||'':'';
+  if(['pending','queued','processing'].includes(order.state))setTimeout(load,5000);
  }catch(e){status.textContent=e instanceof Error?e.message:'Не удалось проверить заявку.';}
 }
 load();

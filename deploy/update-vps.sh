@@ -3,6 +3,7 @@ set -Eeuo pipefail
 umask 022
 [[ $EUID -eq 0 ]] || { echo 'Run as root'; exit 1; }
 sha=${1:-}
+[[ ${2:-} == '' || ${2:-} == '--without-backup' ]] || { echo 'Unknown option'; exit 1; }
 [[ $sha =~ ^[0-9a-f]{40}$ ]] || { echo 'Pass an exact reviewed Git commit SHA'; exit 1; }
 exec 9>/run/lock/taroway-deploy.lock
 flock -n 9 || { echo 'Deployment already running'; exit 1; }
@@ -28,7 +29,9 @@ runuser -u taroway -- env PATH="$nodebin:$PATH" npm run build
 install -d -m 755 "$public"
 cp -r "$release/dist/." "$public/"
 printf '{"revision":"%s"}\n' "$sha" > "$public/release.json"
-python3 /usr/local/lib/taroway/backup.py
+if [[ ${2:-} != '--without-backup' ]]; then
+  python3 /usr/local/lib/taroway/backup.py
+fi
 nginx -t
 # First migration preserves the existing public directory as the rollback target.
 if [[ ! -L /var/www/taroway ]]; then

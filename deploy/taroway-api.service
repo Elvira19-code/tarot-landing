@@ -15,6 +15,10 @@ Environment=SITE_URL=https://taroway.com
 Environment=PORT=4325
 Environment=TRUST_LOCAL_PROXY=1
 Environment=DATA_DIR=/var/lib/taroway-site
+Environment=ROBOKASSA_LOGIN=taroway
+Environment=ROBOKASSA_HASH=md5
+EnvironmentFile=-/etc/taroway/payments.env
+LoadCredential=cloudru.key:/etc/taroway/cloudru.key
 StateDirectory=taroway-site
 StateDirectoryMode=0700
 UMask=0077
