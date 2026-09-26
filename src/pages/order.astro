@@ -32,7 +32,17 @@ age.checked=false;syncAge();
 age.addEventListener('change',syncAge);
 window.addEventListener('pageshow',()=>{age.checked=false;syncAge();review.hidden=true;});
 const today=new Date().toLocaleDateString('en-CA');(form.elements.namedItem('start') as HTMLInputElement).value=today;(form.elements.namedItem('start') as HTMLInputElement).min=today;(form.elements.namedItem('birth') as HTMLInputElement).max=today;
-const chosen=new URLSearchParams(location.search).get('service');if(chosen&&Object.hasOwn(catalog,chosen))(form.querySelector(`input[value="${chosen}"]`) as HTMLInputElement).checked=true;
+const requested=new URLSearchParams(location.search).get('service');
+const aliases:Record<string,{service:string,spread?:string}>={
+ 'horoscope-day':{service:'day'},'horoscope-week':{service:'week'},'horoscope-month':{service:'month'},
+ 'natal-chart':{service:'natal'},'tarot-path':{service:'tarot',spread:'choice'},
+ 'tarot-station':{service:'tarot',spread:'relationship'},'tarot-celtic':{service:'tarot',spread:'cross'}
+};
+const chosen=requested?(aliases[requested]||{service:requested}):null;
+if(chosen&&Object.hasOwn(catalog,chosen.service)){
+ (form.querySelector(`input[value="${chosen.service}"]`) as HTMLInputElement).checked=true;
+ if(chosen.spread)(form.elements.namedItem('spread') as HTMLSelectElement).value=chosen.spread;
+}
 function sync(){const data=new FormData(form);const consultation=String(data.get('service')).startsWith('consultation_');const tarot=data.get('service')==='tarot',period=!consultation&&!tarot&&data.get('service')!=='natal';for(const [id,active]of [['astro-fields',!tarot&&!consultation],['tarot-fields',tarot],['consultation-fields',consultation]] as const){const el=document.getElementById(id)!;el.hidden=!active;el.querySelectorAll<HTMLInputElement>('input,select,textarea').forEach(input=>input.disabled=!active);}const start=form.elements.namedItem('start') as HTMLInputElement;start.disabled=!period;document.getElementById('period-field')!.hidden=!period;document.getElementById('period-note')!.hidden=!period;(form.elements.namedItem('question') as HTMLTextAreaElement).required=tarot;(form.elements.namedItem('consultationQuestion') as HTMLTextAreaElement).required=consultation;review.hidden=true;syncAge();}
 form.addEventListener('change',sync);form.addEventListener('input',()=>review.hidden=true);
 form.addEventListener('tarot-selection',((event:CustomEvent)=>{cards=event.detail.cards;reversed=event.detail.reversed;review.hidden=true;}) as EventListener);

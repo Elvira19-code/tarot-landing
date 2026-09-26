@@ -26,12 +26,29 @@ THEMES = ['новое начало', 'инициатива', 'внимание �
           'осознанный выбор', 'направление', 'терпение', 'пауза для размышлений', 'перемены',
           'честность', 'другая точка зрения', 'завершение этапа', 'баланс', 'привычки',
           'пересмотр опор', 'надежда', 'неопределённость', 'радость', 'переоценка', 'целостность']
-DECK = list(zip(MAJORS, THEMES)) + [
-    (f'{rank} {suit}', theme)
-    for suit, theme in [('Жезлов', 'инициатива и энергия'), ('Кубков', 'чувства и общение'),
-                        ('Мечей', 'ясность мысли'), ('Пентаклей', 'повседневные дела')]
-    for rank in ['Туз', 'Двойка', 'Тройка', 'Четвёрка', 'Пятёрка', 'Шестёрка',
-                 'Семёрка', 'Восьмёрка', 'Девятка', 'Десятка', 'Паж', 'Рыцарь', 'Королева', 'Король']]
+MAJOR_FILES = ['Fool', 'Magician', 'High Priestess', 'Empress', 'Emperor', 'Hierophant',
+               'Lovers', 'Chariot', 'Strength', 'Hermit', 'Wheel of Fortune', 'Justice',
+               'Hanged Man', 'Death', 'Temperance', 'Devil', 'Tower', 'Star', 'Moon',
+               'Sun', 'Judgement', 'World']
+DECK = [(name, theme, f'RWS Tarot {number:02d} {filename}.jpg')
+        for number, (name, theme, filename) in enumerate(zip(MAJORS, THEMES, MAJOR_FILES))] + [
+    (f'{rank} {suit}', theme, f'{code}{number:02d}.jpg')
+    for suit, code, theme in [('Жезлов', 'Wands', 'инициатива и энергия'),
+                              ('Кубков', 'Cups', 'чувства и общение'),
+                              ('Мечей', 'Swords', 'ясность мысли'),
+                              ('Пентаклей', 'Pents', 'повседневные дела')]
+    for number, rank in enumerate(['Туз', 'Двойка', 'Тройка', 'Четвёрка', 'Пятёрка',
+                                   'Шестёрка', 'Семёрка', 'Восьмёрка', 'Девятка',
+                                   'Десятка', 'Паж', 'Рыцарь', 'Королева', 'Король'], 1)]
+PAID_SERVICES = [
+    ('🗓 Гороскоп на день', 'https://taroway.com/order?service=horoscope-day'),
+    ('📅 Гороскоп на неделю', 'https://taroway.com/order?service=horoscope-week'),
+    ('🗓 Гороскоп на месяц', 'https://taroway.com/order?service=horoscope-month'),
+    ('🌟 Натальная карта', 'https://taroway.com/order?service=natal-chart'),
+    ('🃏 Таро «Выбор пути»', 'https://taroway.com/order?service=tarot-path'),
+    ('🚂 Таро «Вокзал на двоих»', 'https://taroway.com/order?service=tarot-station'),
+    ('✝️ Таро «Кельтский крест»', 'https://taroway.com/order?service=tarot-celtic'),
+]
 
 
 def keyboard(*items):
@@ -39,9 +56,22 @@ def keyboard(*items):
 
 
 def menu(page=0):
-    if page:
-        return keyboard(('📝 Записаться', 'book'), ('ℹ️ О нас', 'about'), ('Назад', 'menu'))
-    return keyboard(('🔮 Гороскоп', 'signs:0'), ('🃏 Карта дня', 'card'), ('Ещё', 'more'))
+    if page == 0:
+        return keyboard(('💰 Платные услуги', 'paid:0'), ('🔮 Гороскоп', 'signs:0'),
+                        ('Ещё', 'menu:1'))
+    if page == 1:
+        return keyboard(('🃏 Карта дня', 'card'), ('📝 Записаться', 'book'), ('Ещё', 'menu:2'))
+    return keyboard(('ℹ️ О нас', 'about'), ('Назад', 'menu'))
+
+
+def paid_menu(page):
+    start = page * 2
+    buttons = [Button(label, url=url) for label, url in PAID_SERVICES[start:start + 2]]
+    if start + 2 < len(PAID_SERVICES):
+        buttons.append(Button('Следующие услуги →', callback_data=f'paid:{page + 1}'))
+    else:
+        buttons.append(Button('Назад', callback_data='menu'))
+    return Markup([[button] for button in buttons])
 
 
 BACK = keyboard(('Назад', 'menu'))
@@ -83,6 +113,26 @@ async def answer_ai(message, context, prompt):
     await message.reply_text(result, reply_markup=BACK)
 
 
+async def card_image(filename, cache):
+    if filename in cache:
+        return cache[filename]
+    async with httpx.AsyncClient(timeout=30, follow_redirects=True,
+                                 headers={'User-Agent': 'TarowayBot/1.0 (https://taroway.com)'}) as client:
+        metadata = await client.get('https://commons.wikimedia.org/w/api.php', params={
+            'action': 'query', 'format': 'json', 'prop': 'imageinfo', 'iiprop': 'url',
+            'iiurlwidth': 600, 'titles': 'File:' + filename,
+        })
+        metadata.raise_for_status()
+        page = next(iter(metadata.json()['query']['pages'].values()))
+        image_url = page['imageinfo'][0].get('thumburl') or page['imageinfo'][0]['url']
+        response = await client.get(image_url)
+        response.raise_for_status()
+        if not response.headers.get('content-type', '').startswith('image/') or len(response.content) > 9_000_000:
+            raise ValueError('Invalid image response')
+    cache[filename] = response.content
+    return response.content
+
+
 async def send_booking(message, context):
     data = context.user_data.get('booking')
     if not data or data.get('step') != 'send':
@@ -106,9 +156,13 @@ async def callback(update, context):
     message = query.message
     # Remove old keyboards to avoid sending the same booking twice by repeated clicks.
     await query.edit_message_reply_markup(reply_markup=None)
-    if action in ('menu', 'more'):
+    if action == 'menu' or action.startswith('menu:'):
         context.user_data.pop('booking', None)
-        await message.reply_text('Выберите раздел:', reply_markup=menu(action == 'more'))
+        page = int(action.split(':')[1]) if ':' in action else 0
+        await message.reply_text('Выберите раздел:', reply_markup=menu(page))
+    elif action.startswith('paid:'):
+        page = int(action.split(':')[1])
+        await message.reply_text('Выберите услугу:', reply_markup=paid_menu(page))
     elif action == 'about':
         await message.reply_text('Эльвира — консультант по Таро и астрологии. '
             'Консультации помогают спокойно обсудить ваш запрос, без обещаний результата.\n'
@@ -125,10 +179,21 @@ async def callback(update, context):
             'дай общий символический настрой дня в 3 предложениях. Не выдумывай положения планет '
             'и события. Укажи, что это не персональный астрологический расчёт и не прогноз фактов.')
     elif action == 'card':
-        name, theme = secrets.choice(DECK)
-        await message.reply_text(f'Карта дня: {name}\n\nТема карты — {theme}. '
-            'Подумайте, как эта тема проявляется сегодня и какой небольшой шаг зависит от вас. '
-            'Это символическая подсказка для размышления, а не предсказание.', reply_markup=BACK)
+        name, theme, filename = secrets.choice(DECK)
+        reversed_card = bool(secrets.randbelow(2))
+        position = 'перевёрнутое' if reversed_card else 'прямое'
+        meaning = (f'Тема карты — {theme}. Обратите внимание, где сегодня можно действовать '
+                   'спокойно и осознанно.' if not reversed_card else
+                   f'Тема карты — {theme}. Перевёрнутое положение предлагает заметить задержку, '
+                   'внутреннее сопротивление или необходимость пересмотреть привычный подход.')
+        caption = (f'Карта дня: {name}\nПоложение: {position}\n\n{meaning}\n\n'
+                   'Это символическая подсказка для размышления, а не предсказание.\n'
+                   'Изображение: Pamela Colman Smith, Wikimedia Commons, общественное достояние.')
+        try:
+            image = await card_image(filename, context.bot_data.setdefault('card_images', {}))
+            await message.reply_photo(image, caption=caption, reply_markup=BACK)
+        except (OSError, httpx.HTTPError, ValueError, KeyError, StopIteration):
+            await message.reply_text(caption + '\nИзображение временно недоступно.', reply_markup=BACK)
     elif action == 'book':
         context.user_data.pop('booking', None)
         await message.reply_text('Для записи подтвердите, что вам исполнилось 18 лет и вы согласны '

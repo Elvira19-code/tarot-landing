@@ -8,13 +8,21 @@ import bot
 class BotConfigurationTests(unittest.TestCase):
     def test_complete_unique_deck(self):
         self.assertEqual(78, len(bot.DECK))
-        self.assertEqual(78, len({name for name, _ in bot.DECK}))
+        self.assertEqual(78, len({name for name, _, _ in bot.DECK}))
+        self.assertEqual(78, len({filename for _, _, filename in bot.DECK}))
 
     def test_every_keyboard_has_at_most_three_buttons(self):
-        keyboards = [bot.menu(), bot.menu(1), bot.BACK,
+        keyboards = [bot.menu(), bot.menu(1), bot.menu(2), bot.BACK,
+                     *(bot.paid_menu(page) for page in range(4)),
                      bot.keyboard(('a', 'a'), ('b', 'b'), ('c', 'c'))]
         for markup in keyboards:
             self.assertLessEqual(sum(map(len, markup.inline_keyboard)), 3)
+
+    def test_paid_service_urls(self):
+        self.assertEqual(7, len(bot.PAID_SERVICES))
+        self.assertEqual(7, len({url for _, url in bot.PAID_SERVICES}))
+        self.assertTrue(all(url.startswith('https://taroway.com/order?service=')
+                            for _, url in bot.PAID_SERVICES))
 
     def test_configuration_uses_environment_only(self):
         env = {
