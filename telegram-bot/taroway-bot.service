@@ -1,0 +1,22 @@
+[Unit]
+Description=Taroway Telegram bot
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=taroway
+Group=taroway
+WorkingDirectory=/opt/taroway/telegram-bot
+ExecStart=/opt/taroway/telegram-venv/bin/python /opt/taroway/telegram-bot/bot.py
+EnvironmentFile=/etc/taroway/telegram.env
+LoadCredential=cloudru.key:/etc/taroway/cloudru.key
+Restart=on-failure
+RestartSec=10
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+
+[Install]
+WantedBy=multi-user.target
