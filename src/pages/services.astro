@@ -6,7 +6,7 @@ import { services, topics } from '../data/site';
 ---
 <Layout title="Услуги и цены — Точка ясности" description="Бесплатная диагностика, Первый ответ 590–990 ₽, Точка ясности 4 000 ₽, Глубокий разбор 7 000–9 000 ₽.">
 <PageHead crumb="Услуги" eyebrow="ВАШ ПУТЬ К ЯСНОСТИ" title="Ваш вопрос." accent="Ваш формат." description="От одной ситуации до большого разговора о себе. Выберите то, что откликается вашему запросу сейчас."/>
-<section class="content-section wrap"><h2>Что хочется прояснить?</h2><div class="topics">{topics.map(topic=><button type="button" class="topic" aria-pressed="false" data-topic={topic}>{topic}</button>)}</div><div class="diagnosis"><h3>Бесплатная диагностика · 0 ₽</h3><a class="button" href="https://t.me/tarot_astro_help_bot">Пройти диагностику <i data-lucide="arrow-up-right"/></a></div>
+<section class="content-section wrap"><h2>Что хочется прояснить?</h2><div class="topics">{topics.map(topic=><button type="button" class="topic" aria-pressed="false" data-topic={topic}>{topic}</button>)}</div><div class="diagnosis"><h3>Бесплатная диагностика · 0 ₽</h3><a class="button" href="https://t.me/tarot_astro_help_bot?start=diagnosis">Пройти диагностику <i data-lucide="arrow-up-right"/></a></div>
   <div class="tabs" role="tablist" aria-label="Форматы разборов">
     {services.map((s,i)=><button type="button" role="tab" id={'tab-'+s.id} aria-selected={i===0?'true':'false'} aria-controls={'panel-'+s.id} tabindex={i===0?0:-1} data-service={s.id}>{s.name}</button>)}
     <button type="button" role="tab" id="tab-automatic" aria-selected="false" aria-controls="panel-automatic" tabindex="-1" data-service="automatic">Автоматические разборы</button>

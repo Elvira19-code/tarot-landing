@@ -12,6 +12,7 @@ VENV_DIR=/opt/taroway/telegram-venv
 
 install -d -o taroway -g taroway -m 0750 "${INSTALL_DIR}"
 install -o taroway -g taroway -m 0640 "${SOURCE_DIR}/bot.py" "${INSTALL_DIR}/bot.py"
+install -o taroway -g taroway -m 0640 "${SOURCE_DIR}/diagnosis.py" "${INSTALL_DIR}/diagnosis.py"
 install -o taroway -g taroway -m 0640 "${SOURCE_DIR}/requirements.txt" "${INSTALL_DIR}/requirements.txt"
 install -o root -g root -m 0700 "${SOURCE_DIR}/configure.py" "${INSTALL_DIR}/configure.py"
 
