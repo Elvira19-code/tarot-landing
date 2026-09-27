@@ -8,9 +8,10 @@ from pathlib import Path
 from zoneinfo import ZoneInfo
 
 import httpx
-from telegram import InlineKeyboardButton as Button, InlineKeyboardMarkup as Markup, Update
+from telegram import InlineKeyboardButton as Button, InlineKeyboardMarkup as Markup, Update, BotCommand
 from telegram.ext import Application, CallbackQueryHandler, CommandHandler, MessageHandler, filters
 from diagnosis import SPHERES, PRODUCTS, SYSTEM, active, birth_date, analysis_input, parse_analysis
+from legal import PRIVACY_SHORT, URLS, document, document_context, audit
 
 PROMPT = ('Ты — вежливый консультант по Таро и астрологии. Отвечай кратко (3–5 предложений), '
           'на русском. Помогай с вопросами: что такое расклад Таро, как проходит консультация, '
@@ -61,7 +62,11 @@ PAID_SERVICES = [
 PAID_SERVICES = [(label + (' · 350 ₽' if i in (3, 7, 8, 9) else ' · 400 ₽' if i == 4
                          else ' · 450 ₽' if i == 5 else ' · 500 ₽' if i == 6 else ''), url)
                  for i, (label, url) in enumerate(PAID_SERVICES)]
-WELCOME = 'Здравствуйте! Я — помощник Эльвиры. Помогу разобраться в вашей ситуации.\n\nВыберите, что вам сейчас интересно:'
+WELCOME = ('Здравствуйте! Я — помощник Эльвиры. Помогу разобраться в вашей ситуации.\n\n'
+           'Продолжая, вы соглашаетесь с политикой конфиденциальности (/privacy) и офертой (/offer).\n'
+           'Обработка данных для диагностики и ИИ-ответов требует отдельного согласия. '
+           'Начало общения не является оплатой или акцептом платного заказа. /revoke — отзыв согласия.\n\n'
+           'Выберите, что вам сейчас интересно:')
 
 
 def keyboard(*items):
@@ -91,14 +96,56 @@ BACK = keyboard(('Назад', 'menu'))
 
 async def begin_diagnosis(message, context):
     context.user_data.pop('booking', None)
-    context.user_data['diagnosis'] = {'step': 'consent', 'updated': time.monotonic()}
+    context.user_data['diagnosis'] = {'step': 'age', 'updated': time.monotonic()}
+    await message.reply_text('Диагностика доступна только совершеннолетним. Подтвердите возраст.',
+        reply_markup=keyboard(('Мне исполнилось 18 лет', 'diag:age'), ('Назад', 'menu')))
+
+
+async def diagnosis_consent(message):
     await message.reply_text('Бесплатная диагностика — разговор для саморефлексии, не медицинское '
         'заключение. Только для 18+. Имя, дата рождения и ответы будут обработаны через '
         'Cloud.ru/GigaChat для подготовки результата. Не указывайте диагнозы, документы, '
         'банковские данные и другие чувствительные сведения. Ответы временно хранятся в памяти '
         'бота; /cancel отменяет диалог. Политика: https://taroway.com/privacy/ '
         'Согласие: https://taroway.com/consent/',
-        reply_markup=keyboard(('Мне 18+, согласен(на)', 'diag:consent'), ('Назад', 'menu')))
+            reply_markup=keyboard(('✅ Согласен', 'diag:consent'), ('Не согласен', 'menu')))
+
+
+async def privacy(update, context):
+    await update.message.reply_text(PRIVACY_SHORT)
+
+
+async def offer(update, context):
+    try:
+        content = document('offer')
+        for start in range(0, len(content), 3500):
+            await update.message.reply_text(content[start:start+3500])
+    except (OSError, ValueError):
+        await update.message.reply_text('Текст документа сейчас доступен на сайте.')
+    await update.message.reply_text('Полная оферта: ' + URLS['offer'])
+
+
+async def revoke(update, context):
+    context.user_data.clear()
+    try:
+        audit(update.effective_user.id, 'revoke', 'all')
+        status = 'Отзыв зафиксирован.'
+    except Exception as error:
+        logging.error('Consent revoke audit failed: %s', type(error).__name__)
+        status = 'Журнал временно недоступен; направьте отзыв на elvira1966@gmail.com.'
+    await update.message.reply_text('Текущая сессия очищена. Новые ИИ-запросы без согласия не отправляются. '
+        + status + ' Сообщения в Telegram и ранее отправленные заявки автоматически не удаляются. '
+        'Для удаления или уточнения данных: elvira1966@gmail.com.', reply_markup=BACK)
+
+
+async def record_consent(update, context, purpose):
+    try:
+        audit(update.effective_user.id, 'agree', purpose)
+    except Exception as error:
+        logging.error('Consent audit failed: %s', type(error).__name__)
+        await update.callback_query.message.reply_text('Не удалось сохранить согласие. Обработка не начата. Попробуйте позже.', reply_markup=BACK)
+        return False
+    return True
 
 
 def sphere_menu():
@@ -172,12 +219,16 @@ async def diagnosis_text(message, context, value, data):
 async def start(update, context):
     context.user_data.pop('booking', None)
     context.user_data.pop('diagnosis', None)
+    context.user_data.pop('name', None)
+    context.user_data.pop('awaiting_ai_consent', None)
     await update.message.reply_text(WELCOME, reply_markup=menu())
     if getattr(context, 'args', None) == ['diagnosis']:
         await begin_diagnosis(update.message, context)
 
 
 async def ai(text, system=PROMPT):
+    if system == PROMPT:
+        system += document_context()
     credential = Path(os.environ.get('CREDENTIALS_DIRECTORY', '/etc/taroway')) / 'cloudru.key'
     key = os.environ.get('CLOUD_RU_API_KEY') or credential.read_text().strip()
     async with httpx.AsyncClient(timeout=45, follow_redirects=False) as client:
@@ -194,6 +245,15 @@ async def ai(text, system=PROMPT):
 
 
 async def answer_ai(message, context, prompt):
+    if not context.user_data.get('ai_consent'):
+        context.user_data['awaiting_ai_consent'] = True
+        await message.reply_text('Для ИИ-ответа ваш вопрос передаётся в Cloud.ru/GigaChat. '
+            'Оператор — Кельина Эльвира Рустемовна. Цель — ответ на ваше обращение. '
+            'Не отправляйте чувствительные сведения. Условия: https://taroway.com/consent/ '
+            'Политика: /privacy. Отзыв: /revoke или elvira1966@gmail.com. '
+            'Согласие не означает принятие оферты или подписку на рекламу.',
+            reply_markup=keyboard(('✅ Согласен', 'ai:consent'), ('Не согласен', 'menu')))
+        return
     now = time.monotonic()
     if now - context.user_data.get('last_ai', -100) < 15:
         await message.reply_text('Пожалуйста, подождите несколько секунд перед следующим вопросом.')
@@ -249,21 +309,31 @@ async def callback(update, context):
     message = query.message
     if message.chat.type != 'private':
         return
+    if action != 'ai:consent':
+        context.user_data.pop('awaiting_ai_consent', None)
     if not action.startswith('diag:'):
         context.user_data.pop('diagnosis', None)
     if action not in ('consent', 'retry'):
         context.user_data.pop('booking', None)
     # Remove old keyboards to avoid sending the same booking twice by repeated clicks.
     await query.edit_message_reply_markup(reply_markup=None)
-    if action == 'diagnosis':
+    if action == 'ai:consent':
+        if context.user_data.pop('awaiting_ai_consent', False) and await record_consent(update, context, 'ai'):
+            context.user_data['ai_consent'] = True
+            await message.reply_text('Согласие сохранено. Теперь отправьте вопрос или выберите гороскоп.', reply_markup=menu())
+    elif action == 'diagnosis':
         await begin_diagnosis(message, context)
     elif action.startswith('diag:'):
         data = active(context.user_data)
         if not data:
             await message.reply_text('Сессия завершена. Начните диагностику заново.', reply_markup=menu())
+        elif action == 'diag:age' and data['step'] == 'age':
+            data.update(step='consent', updated=time.monotonic())
+            await diagnosis_consent(message)
         elif action == 'diag:consent' and data['step'] == 'consent':
-            data.update(step='name', updated=time.monotonic())
-            await message.reply_text('Как к вам обращаться?')
+            if await record_consent(update, context, 'diagnosis'):
+                data.update(step='name', updated=time.monotonic())
+                await message.reply_text('Как к вам обращаться?')
         elif action.startswith('diag:sphere:') and data['step'] == 'sphere':
             index = action.rsplit(':', 1)[1]
             if index.isdigit() and 0 <= int(index) < len(SPHERES):
@@ -330,8 +400,9 @@ async def callback(update, context):
             'Политика: https://taroway.com/privacy/\nНе указывайте чувствительные сведения.',
             reply_markup=keyboard(('Мне 18+, согласен(на)', 'consent'), ('Назад', 'menu')))
     elif action == 'consent':
-        context.user_data['booking'] = {'step': 'name'}
-        await message.reply_text('Как вас зовут?')
+        if await record_consent(update, context, 'booking'):
+            context.user_data['booking'] = {'step': 'name'}
+            await message.reply_text('Как вас зовут?')
     elif action == 'retry':
         await send_booking(message, context)
 
@@ -386,12 +457,25 @@ def configuration():
     return token, owner
 
 
+async def register_commands(app):
+    try:
+        await app.bot.set_my_commands([
+            BotCommand('start', 'Главное меню'), BotCommand('privacy', 'Политика конфиденциальности'),
+            BotCommand('offer', 'Публичная оферта'), BotCommand('revoke', 'Отозвать согласие'),
+            BotCommand('cancel', 'Отменить текущий диалог')])
+    except Exception as error:
+        logging.error('Command registration failed: %s', type(error).__name__)
+
+
 def build_app():
     token, owner = configuration()
-    app = Application.builder().token(token).concurrent_updates(False).build()
+    app = Application.builder().token(token).concurrent_updates(False).post_init(register_commands).build()
     app.bot_data['owner'] = owner
     private = filters.ChatType.PRIVATE
     app.add_handler(CommandHandler(['start', 'cancel'], start, filters=private))
+    app.add_handler(CommandHandler('privacy', privacy, filters=private))
+    app.add_handler(CommandHandler('offer', offer, filters=private))
+    app.add_handler(CommandHandler('revoke', revoke, filters=private))
     app.add_handler(CallbackQueryHandler(callback))
     app.add_handler(MessageHandler(private & filters.TEXT & ~filters.COMMAND, text))
     app.add_error_handler(on_error)
