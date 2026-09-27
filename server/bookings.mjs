@@ -69,6 +69,6 @@ export function validateBooking(input) {
   if (input.ageConfirmed !== true || input.offer !== true || input.consent !== true) throw Error('Подтвердите возраст, оферту и согласие.');
   const name = String(input.name || '').trim(), contact = String(input.contact || '').trim(), question = String(input.question || '').trim();
   if (!name || name.length > 80 || contact.length < 3 || contact.length > 150 || question.length > 2000) throw Error('Проверьте имя, контакт и вопрос.');
-  if (!['first','tarot','deep','unsure'].includes(input.service)) throw Error('Выберите формат.');
+  if (!['tarot','deep','unsure'].includes(input.service)) throw Error('Выберите формат консультации. «Первый ответ» оформляется без записи на встречу на странице заказа.');
   return { name, contact, question, service: input.service, appointmentDate: input.appointmentDate, appointmentTime: input.appointmentTime, ageConfirmed: true, offer: true, consent: true, legal: '2026-09-24' };
 }

@@ -1,0 +1,24 @@
+<fieldset data-first-answer>
+ <legend>Инструменты «Первого ответа»</legend>
+ <p>Базовый набор · 590 ₽: диагностика (ответы на вопросы), резюме о том, как можно изменить ситуацию, и направление помощи — психология.</p>
+ <label><input type="checkbox" name="firstNatal"/> Натальная карта как часть диагностики · +200 ₽</label>
+ <label><input type="checkbox" name="firstQuestions"/> Список вопросов для самоанализа · +100 ₽</label>
+ <label><input type="checkbox" name="firstExtended" disabled/> Расширенное резюме · +100 ₽ (с картой и вопросами)</label>
+ <p>Полный набор: натальная карта, вопросы и расширенное резюме · 990 ₽.</p>
+ <p>Личная консультация не входит. Натальная карта — инструмент саморефлексии в составе диагностики, а не отдельная консультация или медицинская диагностика.</p>
+ <p class="total" aria-live="polite">Итого: <strong data-first-total>590 ₽</strong></p>
+</fieldset>
+<script>
+import {firstPrice} from '../../server/first-answer.mjs';
+document.querySelectorAll<HTMLElement>('[data-first-answer]').forEach(panel=>{
+ const inputs=[...panel.querySelectorAll<HTMLInputElement>('input')];
+ const [natal,questions,extended]=inputs;
+ const params=new URLSearchParams(location.search);
+ inputs.forEach(input=>input.checked=params.get(input.name)==='on');
+ const sync=()=>{extended.disabled=!natal.checked||!questions.checked;if(extended.disabled)extended.checked=false;panel.querySelector('[data-first-total]')!.textContent=firstPrice({firstNatal:natal.checked,firstQuestions:questions.checked,firstExtended:extended.checked})+' ₽';};
+ panel.addEventListener('change',sync);sync();
+});
+</script>
+<style>
+fieldset{border:0;padding:0;margin:20px 0;min-width:0}legend{font-size:20px;color:var(--gold)}label{display:flex;align-items:flex-start;gap:12px;margin:16px 0;font-size:16px;line-height:1.5}input{flex:none;width:20px;height:20px;min-height:20px;padding:0;margin-top:2px;accent-color:var(--gold)}p{font-size:15px;line-height:1.6}.total{font-size:22px;color:var(--gold)}
+</style>

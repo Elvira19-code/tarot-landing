@@ -1,5 +1,7 @@
 import {receiptContact} from './receipt.mjs';
+import {firstOptions,firstPrice} from './first-answer.mjs';
 export const catalog = {
+ first: {name:'Первый ответ (без личной консультации)',price:590,days:0},
  consultation_tarot: {name:'Большой разбор: Точка ясности',price:4000,days:0,consultation:true},
  consultation_photo: {name:'Разбор по фото + Таро (архив)',price:5500,days:0,consultation:true,retired:true},
  consultation_full: {name:'Полный разбор (архив)',price:6000,days:0,consultation:true,retired:true},
@@ -11,7 +13,7 @@ export const catalog = {
 };
 export const spreads = {cross:10,relationship:7,choice:5,year:12,mirror:6};
 export const spreadPrices = {cross:350,relationship:350,choice:350,year:450,mirror:350};
-export const orderPrice = data => data.service === 'tarot' ? spreadPrices[data.spread] : catalog[data.service]?.price;
+export const orderPrice = data => data.service === 'first' ? firstPrice(data) : data.service === 'tarot' ? spreadPrices[data.spread] : catalog[data.service]?.price;
 export const deck = ['Шут','Маг','Верховная Жрица','Императрица','Император','Иерофант','Влюблённые','Колесница','Сила','Отшельник','Колесо Фортуны','Справедливость','Повешенный','Смерть','Умеренность','Дьявол','Башня','Звезда','Луна','Солнце','Суд','Мир', ...['Жезлы','Кубки','Мечи','Пентакли'].flatMap(s=>['Туз','2','3','4','5','6','7','8','9','10','Паж','Рыцарь','Королева','Король'].map(r=>`${s}: ${r}`))];
 export function validate(input) {
  if(input.ageConfirmed!==true) throw Error('Подтвердите, что вам исполнилось 18 лет.');
@@ -23,7 +25,17 @@ export function validate(input) {
  if(input.consent!==true||input.offer!==true)throw Error('Подтвердите условия и согласие.');
  data.consent=true;data.offer=true;
  const date=(value)=>{if(!/^\d{4}-\d{2}-\d{2}$/.test(value)||!Number.isFinite(Date.parse(value))||new Date(value).toISOString().slice(0,10)!==value)throw Error('Некорректная дата.');return value;};
- if(p.consultation){
+ if(input.service==='first'){
+  const options=firstOptions(input);
+  if(options.extended&&(!options.natal||!options.questions))throw Error('Расширенное резюме доступно в полном наборе.');
+  data.firstNatal=options.natal;data.firstQuestions=options.questions;data.firstExtended=options.extended;
+  data.question=text('firstQuestion',1000);
+  if(options.natal){
+   data.birth=date(text('birth',10));if(data.birth>new Date().toISOString().slice(0,10)||data.birth<'1900-01-01')throw Error('Проверьте дату рождения.');
+   data.place=text('place',160);data.time=String(input.time||'');
+   if(data.time&&!/^([01]\d|2[0-3]):[0-5]\d$/.test(data.time))throw Error('Проверьте время рождения.');
+  }
+ }else if(p.consultation){
   data.question=text('consultationQuestion',1000);
   data.appointmentDate=text('appointmentDate',10);data.appointmentTime=text('appointmentTime',5);
  }else if(input.service==='tarot'){

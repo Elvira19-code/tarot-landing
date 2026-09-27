@@ -1,6 +1,7 @@
 ---
 import Layout from '../layouts/Layout.astro';
 import PageHead from '../components/PageHead.astro';
+import FirstAnswer from '../components/FirstAnswer.astro';
 import { services, topics } from '../data/site';
 ---
 <Layout title="Услуги и цены — Точка ясности" description="Бесплатная диагностика, Первый ответ 590–990 ₽, Точка ясности 4 000 ₽, Глубокий разбор 7 000–9 000 ₽.">
@@ -13,9 +14,10 @@ import { services, topics } from '../data/site';
   {services.map((s,i)=><article class="service-detail" role="tabpanel" id={'panel-'+s.id} aria-labelledby={'tab-'+s.id} tabindex="0" hidden={i!==0}>
     <div><p class="eyebrow">{s.label} / {s.subtitle}</p><h2>{s.title}</h2><p class="description">{s.description}</p><ul class="included">{s.includes.map(line=><li><i data-lucide="check"/>{line}</li>)}</ul></div>
     <aside class="service-aside">
-      <p class="eyebrow">ВАШ ФОРМАТ</p><p class="price">{s.price}</p><p class="time">{s.time}</p>
-      <form class="format-choice" action="/contact/" method="get">
+      <p class="eyebrow">ВАШ ФОРМАТ</p>{s.id!=='first'&&<p class="price">{s.price}</p>}<p class="time">{s.time}</p>
+      <form class="format-choice" action={s.id==='first'?'/order/':'/contact/'} method="get">
         <input type="hidden" name="service" value={s.id}/><input type="hidden" name="topic" value=""/>
+        {s.id==='first'&&<FirstAnswer/>}
         <label class="consent" for={'age-'+s.id}><input id={'age-'+s.id} type="checkbox" required autocomplete="off"/><span>Я подтверждаю, что мне исполнилось 18 лет</span></label>
         <button class="button" type="submit" disabled>Выбрать формат <i data-lucide="arrow-up-right"/></button>
       </form>
@@ -34,7 +36,7 @@ document.querySelectorAll<HTMLButtonElement>('[data-topic]').forEach(button=>but
 const tabs = [...document.querySelectorAll<HTMLButtonElement>('[role=tab]')];
 const panels = [...document.querySelectorAll<HTMLElement>('[role=tabpanel]')];
 document.querySelectorAll<HTMLFormElement>('.format-choice').forEach(form=>{
- const age=form.querySelector<HTMLInputElement>('input[type=checkbox]')!;
+ const age=form.querySelector<HTMLInputElement>('.consent input')!;
  const button=form.querySelector<HTMLButtonElement>('button[type=submit]')!;
  const sync=()=>{button.disabled=!age.checked;};
  age.checked=false; sync();
