@@ -11,17 +11,16 @@ class BotConfigurationTests(unittest.TestCase):
         self.assertEqual(78, len({name for name, _, _ in bot.DECK}))
         self.assertEqual(78, len({filename for _, _, filename in bot.DECK}))
 
-    def test_every_keyboard_has_at_most_three_buttons(self):
-        keyboards = [bot.menu(), bot.menu(1), bot.menu(2), bot.BACK,
-                     *(bot.paid_menu(page) for page in range(4)),
-                     bot.keyboard(('a', 'a'), ('b', 'b'), ('c', 'c'))]
-        for markup in keyboards:
-            self.assertLessEqual(sum(map(len, markup.inline_keyboard)), 3)
+    def test_main_menu_and_twelve_spheres(self):
+        self.assertEqual(8, sum(map(len, bot.menu().inline_keyboard)))
+        self.assertEqual(12, sum(button.callback_data.startswith('diag:sphere:')
+            for row in bot.sphere_menu().inline_keyboard for button in row))
+        self.assertTrue(all(len(row) <= 2 for row in bot.menu().inline_keyboard))
 
     def test_paid_service_urls(self):
-        self.assertEqual(7, len(bot.PAID_SERVICES))
-        self.assertEqual(7, len({url for _, url in bot.PAID_SERVICES}))
-        self.assertTrue(all(url.startswith('https://taroway.com/order?service=')
+        self.assertEqual(12, len(bot.PAID_SERVICES))
+        self.assertEqual(12, len({url for _, url in bot.PAID_SERVICES}))
+        self.assertTrue(all(url.startswith('https://taroway.com/')
                             for _, url in bot.PAID_SERVICES))
 
     def test_configuration_uses_environment_only(self):
