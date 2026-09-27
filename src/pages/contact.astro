@@ -10,6 +10,7 @@ import { brand, services, faqs } from '../data/site';
 <script>
 const form=document.querySelector<HTMLFormElement>('#booking-form')!,service=document.querySelector<HTMLSelectElement>('#service')!,age=form.querySelector<HTMLInputElement>('[name=ageConfirmed]')!,button=form.querySelector<HTMLButtonElement>('[type=submit]')!,result=document.querySelector<HTMLElement>('#form-result')!,error=document.querySelector<HTMLElement>('#booking-error')!;
 const selected=new URLSearchParams(location.search).get('service');if(selected&&[...service.options].some(o=>o.value===selected))service.value=selected;
+const topic=new URLSearchParams(location.search).get('topic');if(topic)(form.elements.namedItem('question') as HTMLTextAreaElement).value=topic;
 let accepting=false,ready=false,sending=false,complete=false;
 const sync=()=>{button.disabled=!age.checked||!accepting||!ready||sending||complete;};
 age.checked=false;age.addEventListener('change',sync);

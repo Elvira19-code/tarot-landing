@@ -4,7 +4,7 @@ import {randomBytes,createHash,timingSafeEqual} from 'node:crypto';
 import {readFile,writeFile,mkdir} from 'node:fs/promises';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
-import {catalog,deck,validate} from './catalog.mjs';
+import {catalog,deck,validate,orderPrice} from './catalog.mjs';
 import {createBookings,validateBooking,moscowDate,PAUSED} from './bookings.mjs';
 import {paymentParams} from './payment.mjs';
 import {generateReading} from './gigachat.mjs';
@@ -32,7 +32,7 @@ if(robo&&(!login||!p1||!p2||p1===p2))throw Error('Distinct Robokassa passwords r
 if(mode==='robokassa'&&process.env.ROBOKASSA_RECEIPTS_READY!=='1')throw Error('Confirm merchant and receipt setup before enabling payments');
 const algorithm=process.env.ROBOKASSA_HASH||'sha256';
 if(!['sha256','md5'].includes(algorithm))throw Error('Unsupported signature algorithm');
-const payableServices=['consultation_tarot','consultation_photo','consultation_full',...(process.env.GIGACHAT_ENABLED==='1'?['tarot']:[])];
+const payableServices=['consultation_tarot',...(process.env.GIGACHAT_ENABLED==='1'?['tarot']:[])];
 const hash=s=>createHash('sha256').update(s).digest('hex');
 const signature=s=>createHash(algorithm).update(s).digest('hex');
 const equal=(a,b)=>{const x=Buffer.from(a),y=Buffer.from(b);return x.length===y.length&&timingSafeEqual(x,y);};
@@ -90,8 +90,8 @@ const server=http.createServer(async(req,res)=>{try{
    if(limited(req,'order'))return reply(res,429,{error:'Слишком много запросов. Подождите минуту.'});
    const data=validate(JSON.parse(await body(req)));const token=randomBytes(32).toString('base64url');
    const requestOnly=mode==='requests'||(robo&&!payableServices.includes(data.service))||(mode==='robokassa'&&data.receiptMethod==='sms');
-   const row=bookings.atomic(()=>{if(!bookings.accepting())throw Error(PAUSED);const row=db.prepare('INSERT INTO orders(token,data,amount,state,created,legal) VALUES(?,?,?,?,?,?)').run(hash(token),JSON.stringify(data),catalog[data.service].price,requestOnly?'requested':'pending',new Date().toISOString(),'offer+consent 2026-09-24');if(catalog[data.service].consultation)bookings.reserve(data,Number(row.lastInsertRowid),requestOnly);return row;});
-   return reply(res,201,{token,id:Number(row.lastInsertRowid),amount:catalog[data.service].price});
+   const row=bookings.atomic(()=>{if(!bookings.accepting())throw Error(PAUSED);const row=db.prepare('INSERT INTO orders(token,data,amount,state,created,legal) VALUES(?,?,?,?,?,?)').run(hash(token),JSON.stringify(data),orderPrice(data),requestOnly?'requested':'pending',new Date().toISOString(),'offer+consent 2026-09-24');if(catalog[data.service].consultation)bookings.reserve(data,Number(row.lastInsertRowid),requestOnly);return row;});
+   return reply(res,201,{token,id:Number(row.lastInsertRowid),amount:orderPrice(data)});
   }
   const order=auth(req);if(!order)return reply(res,404,{error:'Заказ не найден. Откройте страницу в том же браузере.'});
   if(req.method==='GET'&&url.pathname==='/api/order'){const data=JSON.parse(order.data);const booking=db.prepare('SELECT date,time,status FROM bookings WHERE order_id=?').get(order.id);return reply(res,200,{id:order.id,state:order.state,amount:order.amount,result:order.result,service:catalog[data.service].name,receiptMethod:data.receiptMethod||'email',receiptContact:data.email||data.phone,booking,mode});}
