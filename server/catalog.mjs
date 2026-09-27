@@ -1,20 +1,23 @@
 import {receiptContact} from './receipt.mjs';
 export const catalog = {
- consultation_tarot: {name:'Личная консультация Таро',price:4000,days:0,consultation:true},
- consultation_photo: {name:'Личная консультация: разбор по фото + Таро',price:5500,days:0,consultation:true},
- consultation_full: {name:'Полный личный разбор: матрица, Таро и фото',price:6000,days:0,consultation:true},
+ consultation_tarot: {name:'Большой разбор: Точка ясности',price:4000,days:0,consultation:true},
+ consultation_photo: {name:'Разбор по фото + Таро (архив)',price:5500,days:0,consultation:true,retired:true},
+ consultation_full: {name:'Полный разбор (архив)',price:6000,days:0,consultation:true,retired:true},
  day: {name:'Персональный гороскоп на день',price:350,days:1},
  week: {name:'Персональный гороскоп на неделю',price:400,days:7},
  month: {name:'Персональный гороскоп на месяц',price:450,days:30},
  natal: {name:'Натальная карта с расшифровкой',price:500,days:0},
  tarot: {name:'Расклад Таро',price:350,days:0}
 };
-export const spreads = {cross:10,relationship:7,choice:5};
+export const spreads = {cross:10,relationship:7,choice:5,year:12,mirror:6};
+export const spreadPrices = {cross:350,relationship:350,choice:350,year:450,mirror:350};
+export const orderPrice = data => data.service === 'tarot' ? spreadPrices[data.spread] : catalog[data.service]?.price;
 export const deck = ['Шут','Маг','Верховная Жрица','Императрица','Император','Иерофант','Влюблённые','Колесница','Сила','Отшельник','Колесо Фортуны','Справедливость','Повешенный','Смерть','Умеренность','Дьявол','Башня','Звезда','Луна','Солнце','Суд','Мир', ...['Жезлы','Кубки','Мечи','Пентакли'].flatMap(s=>['Туз','2','3','4','5','6','7','8','9','10','Паж','Рыцарь','Королева','Король'].map(r=>`${s}: ${r}`))];
 export function validate(input) {
  if(input.ageConfirmed!==true) throw Error('Подтвердите, что вам исполнилось 18 лет.');
  const p = catalog[input.service];
  if(!Object.hasOwn(catalog,input.service)) throw Error('Выберите услугу.');
+ if(p.retired)throw Error('Этот формат больше не доступен. Выберите новую услугу.');
  const text=(key,max)=>{const value=String(input[key]??'').trim();if(!value||value.length>max)throw Error('Проверьте поле '+key);return value;};
  const data={service:input.service,name:text('name',80),...receiptContact(input),ageConfirmed:true};
  if(input.consent!==true||input.offer!==true)throw Error('Подтвердите условия и согласие.');

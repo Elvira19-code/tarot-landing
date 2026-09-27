@@ -69,6 +69,6 @@ export function validateBooking(input) {
   if (input.ageConfirmed !== true || input.offer !== true || input.consent !== true) throw Error('Подтвердите возраст, оферту и согласие.');
   const name = String(input.name || '').trim(), contact = String(input.contact || '').trim(), question = String(input.question || '').trim();
   if (!name || name.length > 80 || contact.length < 3 || contact.length > 150 || question.length > 2000) throw Error('Проверьте имя, контакт и вопрос.');
-  if (!['tarot','astrology','matrix','photo','unsure'].includes(input.service)) throw Error('Выберите формат.');
+  if (!['first','tarot','deep','unsure'].includes(input.service)) throw Error('Выберите формат.');
   return { name, contact, question, service: input.service, appointmentDate: input.appointmentDate, appointmentTime: input.appointmentTime, ageConfirmed: true, offer: true, consent: true, legal: '2026-09-24' };
 }

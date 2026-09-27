@@ -84,6 +84,7 @@ show.addEventListener('click', () => {
   root.querySelector('#spread-heading')!.textContent = spread.name;
   root.querySelector('#spread-question')!.textContent = question.value.trim() ? `Ваш вопрос: ${question.value.trim()}` : '';
   const list = root.querySelector('.spread-cards')!;
+  list.setAttribute('data-spread',select.value);
   list.replaceChildren();
   selected.forEach((selection, index) => {
     const card = tarotCards[selection.id];
@@ -124,6 +125,7 @@ newSpread();
   #tarot-result h3{font-size:24px;margin:28px 0 12px}
   #spread-question{overflow-wrap:anywhere}
   .spread-cards{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:24px 16px;margin:24px 0 36px}
+  .spread-cards[data-spread=year]{grid-template-columns:repeat(4,minmax(0,1fr))}.spread-cards[data-spread=mirror]{grid-template-columns:repeat(3,minmax(0,1fr))}
   .spread-cards :global(figure){margin:0;min-width:0}
   .spread-cards :global(img){display:block;width:100%;height:auto;aspect-ratio:3/5.2;object-fit:contain;background:#171526;border:1px solid var(--gold);border-radius:4px}
   .spread-cards :global(figcaption){display:grid;gap:8px;margin-top:14px;font-size:14px;line-height:1.5;overflow-wrap:anywhere}
@@ -131,6 +133,6 @@ newSpread();
   #tarot-picker :global(img.reversed){transform:rotate(180deg)}
   #gigachat-reading{border-block:1px solid var(--line);padding:4px 0 24px;margin:28px 0}
   @media(max-width:700px){.tarot-deck{grid-template-columns:repeat(6,minmax(0,1fr));gap:8px}.spread-cards{grid-template-columns:repeat(3,minmax(0,1fr))}}
-  @media(max-width:440px){.tarot-deck{grid-template-columns:repeat(4,minmax(0,1fr))}.spread-cards{grid-template-columns:repeat(2,minmax(0,1fr))}#tarot-result h2{font-size:28px}}
+  @media(max-width:440px){.tarot-deck{grid-template-columns:repeat(4,minmax(0,1fr))}.spread-cards,.spread-cards[data-spread=year],.spread-cards[data-spread=mirror]{grid-template-columns:repeat(2,minmax(0,1fr))}#tarot-result h2{font-size:28px}}
   @media(prefers-reduced-motion:reduce){.tarot-pick{transition:none}}
 </style>
