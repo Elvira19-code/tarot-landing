@@ -1,3 +1,4 @@
+import {LEGAL_VERSION} from './legal.mjs';
 export const TIMES = ['11:00', '13:00', '15:00', '17:00'];
 export const PAUSED = 'Временно запись не принимается. Пожалуйста, зайдите позже.';
 export const moscowDate = (now = Date.now()) => new Date(now + 3 * 3600000).toISOString().slice(0, 10);
@@ -70,5 +71,5 @@ export function validateBooking(input) {
   const name = String(input.name || '').trim(), contact = String(input.contact || '').trim(), question = String(input.question || '').trim();
   if (!name || name.length > 80 || contact.length < 3 || contact.length > 150 || question.length > 2000) throw Error('Проверьте имя, контакт и вопрос.');
   if (!['tarot','deep','unsure'].includes(input.service)) throw Error('Выберите формат консультации. «Первый ответ» оформляется без записи на встречу на странице заказа.');
-  return { name, contact, question, service: input.service, appointmentDate: input.appointmentDate, appointmentTime: input.appointmentTime, ageConfirmed: true, offer: true, consent: true, legal: '2026-09-24' };
+  return { name, contact, question, service: input.service, appointmentDate: input.appointmentDate, appointmentTime: input.appointmentTime, ageConfirmed: true, offer: true, consent: true, legal: LEGAL_VERSION };
 }

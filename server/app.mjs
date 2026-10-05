@@ -7,6 +7,7 @@ import {fileURLToPath} from 'node:url';
 import {catalog,deck,validate,orderPrice} from './catalog.mjs';
 import {createBookings,validateBooking,moscowDate,PAUSED} from './bookings.mjs';
 import {paymentParams} from './payment.mjs';
+import {LEGAL_VERSION} from './legal.mjs';
 import {generateReading} from './gigachat.mjs';
 import {clientIp} from './client-ip.mjs';
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
@@ -90,7 +91,7 @@ const server=http.createServer(async(req,res)=>{try{
    if(limited(req,'order'))return reply(res,429,{error:'Слишком много запросов. Подождите минуту.'});
    const data=validate(JSON.parse(await body(req)));const token=randomBytes(32).toString('base64url');
    const requestOnly=mode==='requests'||(robo&&!payableServices.includes(data.service))||(mode==='robokassa'&&data.receiptMethod==='sms');
-   const row=bookings.atomic(()=>{if(!bookings.accepting())throw Error(PAUSED);const row=db.prepare('INSERT INTO orders(token,data,amount,state,created,legal) VALUES(?,?,?,?,?,?)').run(hash(token),JSON.stringify(data),orderPrice(data),requestOnly?'requested':'pending',new Date().toISOString(),'offer+consent 2026-09-24');if(catalog[data.service].consultation)bookings.reserve(data,Number(row.lastInsertRowid),requestOnly);return row;});
+   const row=bookings.atomic(()=>{if(!bookings.accepting())throw Error(PAUSED);const row=db.prepare('INSERT INTO orders(token,data,amount,state,created,legal) VALUES(?,?,?,?,?,?)').run(hash(token),JSON.stringify(data),orderPrice(data),requestOnly?'requested':'pending',new Date().toISOString(),LEGAL_VERSION);if(catalog[data.service].consultation)bookings.reserve(data,Number(row.lastInsertRowid),requestOnly);return row;});
    return reply(res,201,{token,id:Number(row.lastInsertRowid),amount:orderPrice(data)});
   }
   const order=auth(req);if(!order)return reply(res,404,{error:'Заказ не найден. Откройте страницу в том же браузере.'});
