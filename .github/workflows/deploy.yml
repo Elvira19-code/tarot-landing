@@ -29,6 +29,12 @@ jobs:
       - run: python3 deploy/test_backup.py
       - run: bash -n deploy/update-vps.sh
       - run: npm run build
+      - name: Save static build for review
+        uses: actions/upload-artifact@v4
+        with:
+          name: site-preview
+          path: dist/
+          retention-days: 3
   deploy:
     needs: verify
     if: github.ref == 'refs/heads/main'

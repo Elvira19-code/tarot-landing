@@ -1,0 +1,8 @@
+---
+import EditorialLayout from '../../layouts/EditorialLayout.astro';
+import {articles} from '../../data/editorial.mjs';
+---
+<EditorialLayout title="Статьи о консультациях таро | Точка ясности" description="Статьи Эльвиры Кельиной о консультациях таро, формате онлайн-встреч и отличиях от психологической помощи." headline="Статьи">
+ {articles.map(article=><section><h2><a href={'/articles/'+article.slug+'/'}>{article.headline}</a></h2><p>{article.description}</p></section>)}
+ <div class="related"><a class="text-link" href="/contact/">Записаться на консультацию</a></div>
+</EditorialLayout>

@@ -1,0 +1,25 @@
+---
+import Layout from './Layout.astro';
+const { title, description, keywords, structuredData, headline } = Astro.props;
+---
+<Layout title={title} description={description} keywords={keywords} ogType="article" ogImage="/images/celestial.png" structuredData={structuredData}>
+ <article class="editorial wrap">
+  <nav aria-label="Хлебные крошки"><a href="/">Главная</a><span>/</span><a href="/articles/">Статьи</a></nav>
+  <h1>{headline}</h1>
+  <slot/>
+ </article>
+</Layout>
+<style>
+ .editorial{max-width:840px;padding-top:48px;padding-bottom:72px;overflow-wrap:anywhere}
+ nav{display:flex;position:static;flex-direction:row;flex-wrap:wrap;gap:12px;font-size:14px;margin-bottom:28px;padding:0;border:0;background:transparent}
+ h1{font-size:44px;line-height:1.15;margin:0 0 32px;letter-spacing:0}
+ .editorial :global(h2){font-size:30px;line-height:1.25;margin:40px 0 18px;letter-spacing:0}
+ .editorial :global(h3){font-size:22px;line-height:1.4;margin:24px 0 12px;letter-spacing:0}
+ .editorial :global(p),.editorial :global(li){font-size:18px;line-height:1.8}
+ .editorial :global(p){margin:0 0 20px}
+ .editorial :global(ul){padding-left:24px;margin:0 0 24px}
+ .editorial :global(li){margin-bottom:10px}
+ .editorial :global(a){text-decoration:underline;text-underline-offset:4px}
+ .editorial :global(.related){border-top:1px solid var(--line);padding-top:24px;margin-top:40px}
+ @media(max-width:600px){h1{font-size:32px}.editorial{padding-top:28px}.editorial :global(h2){font-size:26px}.editorial :global(p),.editorial :global(li){font-size:17px}}
+</style>

@@ -1,0 +1,15 @@
+---
+import EditorialLayout from '../layouts/EditorialLayout.astro';
+import {faq} from '../data/editorial.mjs';
+const structuredData = {
+ '@context':'https://schema.org','@type':'FAQPage',
+ mainEntity:faq.sections.flatMap(section=>section.questions.map(item=>({
+  '@type':'Question',name:item.question,acceptedAnswer:{'@type':'Answer',text:item.answer}
+ })))
+};
+---
+<EditorialLayout {...faq} headline="Вопросы и ответы" structuredData={structuredData}>
+ {faq.sections.map(section=><section><h2>{section.title}</h2>{section.questions.map(item=><><h3>{item.question}</h3><p>{item.answer}</p></>)}</section>)}
+ <h2>Всё ещё сомневаетесь?</h2><p>{faq.closing}</p><p><a href="/contact/">Записаться на консультацию.</a></p>
+ <div class="related"><p><a href="/articles/kak-prohodit-konsultaciya-taro/">Как проходит консультация таро</a></p><p><a href="/offer/">Публичная оферта и условия возврата</a></p></div>
+</EditorialLayout>

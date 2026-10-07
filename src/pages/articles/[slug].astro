@@ -1,0 +1,24 @@
+---
+import EditorialLayout from '../../layouts/EditorialLayout.astro';
+import { articles } from '../../data/editorial.mjs';
+export function getStaticPaths() {
+ return articles.map(article => ({params:{slug:article.slug},props:{article}}));
+}
+const {article} = Astro.props;
+const structuredData = {
+ '@context':'https://schema.org','@type':'Article',
+ headline:article.headline,description:article.description,
+ author:{'@type':'Person',name:'Кельина Эльвира Рустемовна'},
+ image:new URL('/images/celestial.png',Astro.site).href,
+ publisher:{'@type':'Organization',name:'Точка ясности'},
+ datePublished:'2026-10-07',dateModified:'2026-10-07',
+ mainEntityOfPage:{'@type':'WebPage','@id':new URL('/articles/'+article.slug+'/',Astro.site).href}
+};
+---
+<EditorialLayout {...article} structuredData={structuredData}>
+ {article.blocks.map(block => block.type==='heading' ? <h2>{block.text}</h2>
+  : block.type==='list' ? <ul>{block.items.map(item=><li>{item}</li>)}</ul>
+  : block.type==='step' ? <><h3>{block.title}</h3><p>{block.text}</p></>
+  : <p>{block.text}</p>)}
+ <div class="related"><p><a href="/faq/">Вопросы и ответы о консультации</a></p><a class="text-link" href="/contact/">Записаться на консультацию</a></div>
+</EditorialLayout>
