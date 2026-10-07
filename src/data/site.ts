@@ -4,7 +4,7 @@ export const contacts = [
  { label: 'WhatsApp', text: '+7 928 633 72 29', href: brand.whatsapp, external: true },
  { label: 'Email', text: 'elvira1966@gmail.com', href: 'mailto:elvira1966@gmail.com', external: false },
  { label: 'Telegram · личные сообщения', text: '@Elvirakelina22', href: brand.telegram, external: true },
- { label: 'Telegram-канал', text: 'Астро & Таро • Карта дня', href: 'https://t.me/Elvirakelina2212', external: true }
+ { label: 'Telegram-канал', text: 'ТОЧКА ЯСНОСТИ • АСТРОЛОГИЯ & ТАРО', href: 'https://t.me/Elvirakelina2212', external: true }
 ];
 export const topics = ['❤️ Отношения','💼 Работа и деньги','🔀 Сложный выбор','🔄 Повторяющаяся ситуация','🧘 Хочу понять себя'];
 export const services = [

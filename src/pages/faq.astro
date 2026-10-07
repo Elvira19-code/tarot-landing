@@ -9,7 +9,7 @@ const structuredData = {
 };
 ---
 <EditorialLayout {...faq} headline="Вопросы и ответы" structuredData={structuredData}>
- {faq.sections.map(section=><section><h2>{section.title}</h2>{section.questions.map(item=><><h3>{item.question}</h3><p>{item.answer}</p></>)}</section>)}
- <h2>Всё ещё сомневаетесь?</h2><p>{faq.closing}</p><p><a href="/contact/">Записаться на консультацию.</a></p>
+ {faq.sections.map(section=><section><h2>{section.title}</h2>{section.questions.map(item=><><h3>{item.question}</h3><p>{item.answer}</p>{item.question==='Как записаться?' && <p><a class="button" href="/services/">Выбрать формат и записаться</a></p>}</>)}</section>)}
+ <h2>Всё ещё сомневаетесь?</h2><p>{faq.closing}</p><p><a href="/services/">Записаться на консультацию.</a></p>
  <div class="related"><p><a href="/articles/kak-prohodit-konsultaciya-taro/">Как проходит консультация таро</a></p><p><a href="/offer/">Публичная оферта и условия возврата</a></p></div>
 </EditorialLayout>
